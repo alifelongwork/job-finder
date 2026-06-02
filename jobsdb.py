@@ -46,6 +46,26 @@ def today():
     return datetime.date.today().isoformat()
 
 
+def days_since(iso):
+    """Whole days from an ISO date to today, or None if missing/unparseable."""
+    if not iso:
+        return None
+    try:
+        return (datetime.date.today() - datetime.date.fromisoformat(iso)).days
+    except ValueError:
+        return None
+
+
+def verified_age(iso):
+    """Short label for how long ago a job was last verified: never / today / Nd."""
+    if not iso:
+        return "never"
+    d = days_since(iso)
+    if d is None:
+        return "?"
+    return "today" if d <= 0 else f"{d}d"
+
+
 def slugify(text):
     s = re.sub(r"[^a-z0-9]+", "_", (text or "").lower()).strip("_")
     return s or "candidate"
@@ -428,7 +448,7 @@ def cmd_query(args):
     sql = (
         "SELECT j.id, j.tier, j.status, j.verification_tag, j.location_match, "
         "COALESCE(co.name, '') AS company, j.title, j.location, j.posting_date, "
-        "j.comp_min, j.comp_max, j.url, j.category_label "
+        "j.comp_min, j.comp_max, j.url, j.category_label, j.last_verified "
         "FROM jobs j LEFT JOIN companies co ON co.id = j.company_id"
     )
     if where:
@@ -455,15 +475,19 @@ def cmd_query(args):
         return ""
 
     print(f"{'id':>4}  {'T':<1} {'tag':<9} {'status':<8} {'company':<22} "
-          f"{'title':<34} {'location':<18} {'posted':<10} comp")
-    print("-" * 130)
+          f"{'title':<34} {'location':<18} {'posted':<10} {'verif':<7} comp")
+    print("-" * 140)
     for r in rows:
         tier = r["tier"] if r["tier"] else "-"
+        d = days_since(r["last_verified"])
+        # Flag rows that are stale-ish or never verified so freshness is visible at a glance.
+        stale = r["last_verified"] is None or (d is not None and d > 7)
+        verif = verified_age(r["last_verified"]) + ("!" if stale else "")
         print(f"{r['id']:>4}  {tier:<1} {TAG_SHORT.get(r['verification_tag'], '?'):<9} "
               f"{r['status']:<8} {(r['company'] or '')[:22]:<22} "
               f"{(r['title'] or '')[:34]:<34} {(r['location'] or '')[:18]:<18} "
-              f"{(r['posting_date'] or '?'):<10} {comp(r)}")
-    print(f"\n{len(rows)} job(s).")
+              f"{(r['posting_date'] or '?'):<10} {verif:<7} {comp(r)}")
+    print(f"\n{len(rows)} job(s).   (verif = age since last live-check; ! = never or >7d — re-verify before applying)")
 
 
 # ---------------------------------------------------------------------------
@@ -514,16 +538,21 @@ def cmd_reverify(args):
         sys.exit("Usage: jobsdb.py reverify list --candidate <slug> [--stale-days N]")
     conn = connect()
     c = get_candidate(conn, args.candidate)
+    today_str = today()
     cutoff = (datetime.date.today()
               - datetime.timedelta(days=args.stale_days)).isoformat()
+    # A job is due for re-verification if: never verified, OR older than the window,
+    # OR it's Tier 1/2 and hasn't been re-checked yet today (those are the roles the
+    # candidate would actually act on, so we keep them as fresh as a sweep allows).
     rows = conn.execute(
         "SELECT j.id, j.title, j.url, j.last_verified, j.status, j.tier, "
         "COALESCE(co.name,'') AS company "
         "FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
         "WHERE j.candidate_id = ? AND j.status IN ('new','active') "
-        "AND (j.last_verified IS NULL OR j.last_verified < ?) "
+        "AND (j.last_verified IS NULL OR j.last_verified < ? "
+        "     OR (j.tier IN (1, 2) AND j.last_verified < ?)) "
         "ORDER BY CASE WHEN j.tier IS NULL THEN 9 ELSE j.tier END, j.last_verified",
-        (c["id"], cutoff),
+        (c["id"], cutoff, today_str),
     ).fetchall()
     conn.close()
 
@@ -534,7 +563,7 @@ def cmd_reverify(args):
         print(f"No jobs need re-verification (stale-days={args.stale_days}).")
         return
     print(f"{len(rows)} job(s) need re-verification "
-          f"(last_verified older than {cutoff} or never):\n")
+          f"(verified before {cutoff}, or Tier 1/2 not yet re-checked today, or never):\n")
     for r in rows:
         tier = f"T{r['tier']}" if r["tier"] else "T-"
         print(f"  id={r['id']:<4} {tier} {(r['company'] or '')[:20]:<20} "
@@ -778,7 +807,9 @@ def build_parser():
     rvsub = rv.add_subparsers(dest="action", required=True)
     rvl = rvsub.add_parser("list", help="Emit stale (new/active) jobs to re-check")
     rvl.add_argument("--candidate", required=True)
-    rvl.add_argument("--stale-days", type=int, default=7)
+    rvl.add_argument("--stale-days", type=int, default=2,
+                     help="Re-check jobs whose last_verified is older than N days "
+                          "(default 2). Tier 1/2 are always re-checked unless verified today.")
     rvl.add_argument("--format", choices=["table", "json"], default="table")
     rvl.set_defaults(func=cmd_reverify)
 

@@ -160,13 +160,21 @@ python jobsdb.py query [filters...]
     --status new|active|applied|expired|rejected|ignored   --verification verified|...
     --location-match yes|no   --since <ISO date>   --limit N   --format table|json
     Default sort: tier asc, then verified-live oldest-posting first (per SKILL Phase 5).
+    Table output includes a `verif` column = age since last live-check (today / Nd /
+    never); a trailing `!` flags never-verified or >7 days old — re-verify before applying.
 
 python jobsdb.py stats --candidate <slug>
     Pipeline breakdown: counts by tier, status, verification_tag, location-match.
 
-python jobsdb.py reverify list --candidate <slug> [--stale-days 7]
-    Emit jobs with status in (new, active) whose last_verified is older than --stale-days
-    (or null). Claude re-fetches each URL, then records the outcome with `mark`.
+python jobsdb.py reverify list --candidate <slug> [--stale-days 2]
+    Emit live (new/active) jobs due for re-verification: last_verified older than
+    --stale-days (default 2), never verified, OR Tier 1/2 not yet re-checked today
+    (Tier 1/2 are kept as fresh as each sweep allows, since they're the roles the
+    candidate actually acts on). Claude re-fetches each URL, then records the outcome
+    with `mark`. NOTE: last_verified is a snapshot, never a live guarantee — the binding
+    freshness check is the per-role re-verify right before applying (and before
+    resume/cover work, per those skills' Phase 0). Pass --stale-days 0 to force a full
+    re-check of every live role.
 
 python jobsdb.py mark <job_id> [--status ...] [--verified] [--resume <path>]
     [--cover <path>] [--applied-date <ISO>] [--note "..."]

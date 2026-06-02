@@ -98,12 +98,12 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   against replaying a back-dated scan batch)
 
 ### Regression suite — `test_jobsdb.py`
-- ☑ 56-assertion suite driving the real CLI via subprocess against a throwaway DB
+- ☑ 58-assertion suite driving the real CLI via subprocess against a throwaway DB
   (`JOBSDB_PATH` override). Covers init/idempotency, candidate parse+update, category
   replace, all three dedup-key paths, upsert update-not-dup, monotonic timestamps,
   every query filter + sort order, reverify staleness, all mark transitions, terminal
   status preservation, company warm_path/multi_region stickiness, and error handling.
-  Run: `python test_jobsdb.py`. **56/56 pass.**
+  Run: `python test_jobsdb.py`. **58/58 pass.**
 
 ### Step 3 — Wire instructions to the DB end-to-end
 - ☑ Audited every `jobsdb.py` reference across all `.md` files vs. the real CLI surface —
@@ -143,7 +143,7 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   1.2.0 present; skips gracefully w/ install hint if absent — core stays dependency-free)
 - ☑ `export --format all` — writes all three; honors all `query` filters; default out dir
   `exports/<slug>_pipeline_<date>.<ext>`
-- ☑ 7 export assertions added to test_jobsdb.py — **56/56 total pass**
+- ☑ 7 export assertions added to test_jobsdb.py — **58/58 total pass**
 - ☑ Query filter logic refactored into shared `job_filter_clause()` (DRY: query + export)
 
 ---
@@ -164,6 +164,12 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 6. **Outputs:** job list = DB only; resumes & cover letters stay as `.docx`; report export
    is optional and generated from the DB in **CSV (stdlib), Markdown (stdlib), and .docx
    (lazy `python-docx`)** — `--format all` writes all three.
+7. **Freshness is point-of-use, not cache-TTL.** `last_verified` is a snapshot, never a
+   live guarantee; the binding check is the per-role re-verify right before applying (and
+   before resume/cover work). The `reverify` window is just a sweep cost-knob: default
+   `--stale-days 2`, but **Tier 1/2 are re-checked every sweep unless verified today**
+   (effort concentrated on roles the candidate acts on), and `query` surfaces a `verif`
+   age column so staleness is always visible. `--stale-days 0` forces a full re-check.
 
 ---
 

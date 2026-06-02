@@ -196,11 +196,23 @@ check("limit", len(json.loads(
 
 print("== reverify list ==")
 r = run("reverify", "list", "--candidate", "tester", "--format", "json")
-rv = json.loads(r.stdout)
-rv_titles = {j["title"] for j in rv}
-# Agg (never verified) is stale; A was verified today so fresh; wrong-loc verified? no->never
+rv_titles = {j["title"] for j in json.loads(r.stdout)}
+# Agg (never verified) is always stale (last_verified IS NULL).
 check("aggregator (never company-confirmed) is stale", "Agg Fallback Key" in rv_titles, rv_titles)
-check("freshly-verified job not stale", "Supplied Key" not in rv_titles, rv_titles)
+# Tier 1/2 are re-checked regardless of the staleness window, as long as they weren't
+# verified TODAY. 'Supplied Key' (tier1) and 'Computed Key' (tier2) were verified on past
+# run_dates, so even a huge window must still surface them.
+r = run("reverify", "list", "--candidate", "tester", "--stale-days", "365", "--format", "json")
+wide = {j["title"] for j in json.loads(r.stdout)}
+check("tier1/2 re-checked regardless of window (not verified today)",
+      "Supplied Key" in wide and "Computed Key" in wide, wide)
+# A wrong_location (tier null) verified within the window must NOT be force-surfaced.
+check("non-tier1/2 within window not force-rechecked", "Wrong Loc" not in wide, wide)
+# After verifying a tier-1 TODAY, the today-guard keeps it off the list.
+run("mark", str(ja["id"]), "--verified")
+r = run("reverify", "list", "--candidate", "tester", "--stale-days", "365", "--format", "json")
+wide2 = {j["title"] for j in json.loads(r.stdout)}
+check("tier1 verified today is not re-listed", "Supplied Key" not in wide2, wide2)
 # wrong_location was confirmed live on the company surface -> it SETS last_verified
 # (unlike aggregator, which never was, so its last_verified stays null).
 wl = db().execute("SELECT last_verified FROM jobs WHERE title='Wrong Loc'").fetchone()[0]
