@@ -31,6 +31,15 @@ exports/
 # Kept locally as the audit trail, but it's one candidate's data — not shared.
 job_scans/
 
+# ── Stray scratch dumps in the repo ROOT (safety net) ──
+# Discovery subagents sometimes curl raw ATS JSON/HTML to disk while verifying
+# postings and don't always clean up. The leading "/" anchors these to the root
+# ONLY — sanctioned homes (job_scans/, exports/) and all tracked source
+# (*.py, *.md, *.sql, .gitignore) live elsewhere and are unaffected.
+# If you ever add a real root-level .json/.html to track, `git add -f <file>`.
+/*.json
+/*.html
+
 # ── Python ──
 __pycache__/
 *.py[cod]
