@@ -228,6 +228,16 @@ check("mark expired", db().execute("SELECT status FROM jobs WHERE id=?",
 r = run("reverify", "list", "--candidate", "tester", "--format", "json")
 check("expired job drops off reverify list",
       agg_id not in {j["id"] for j in json.loads(r.stdout)})
+# Default query/export hide expired/rejected/ignored; --all and explicit --status reveal them.
+ids_default = {j["id"] for j in json.loads(
+    run("query", "--candidate", "tester", "--format", "json").stdout)}
+check("query hides expired by default", agg_id not in ids_default, ids_default)
+ids_all = {j["id"] for j in json.loads(
+    run("query", "--candidate", "tester", "--all", "--format", "json").stdout)}
+check("query --all includes expired", agg_id in ids_all, ids_all)
+ids_exp = {j["id"] for j in json.loads(
+    run("query", "--candidate", "tester", "--status", "expired", "--format", "json").stdout)}
+check("query --status expired still works", agg_id in ids_exp, ids_exp)
 a_id = ja["id"]
 run("mark", str(a_id), "--status", "applied", "--resume", "r.docx",
     "--cover", "c.docx", "--note", "submitted")
@@ -280,7 +290,15 @@ check("export all writes csv+md", os.path.exists(csv_path) and os.path.exists(md
 run("export", "--candidate", "tester", "--format", "csv", "--tier", "1", "--out", expbase + "_t1")
 t1 = open(expbase + "_t1.csv", encoding="utf-8").read()
 check("export honors filters (tier=1)", t1.count("\n") < txt.count("\n"))
-for p in (csv_path, md_path, expbase + ".docx", expbase + "_t1.csv"):
+# default export hides expired (agg_id was expired above); --all reveals it
+run("export", "--candidate", "tester", "--format", "csv", "--out", expbase + "_def")
+deftxt = open(expbase + "_def.csv", encoding="utf-8").read()
+check("export hides expired by default", "expired" not in deftxt)
+run("export", "--candidate", "tester", "--all", "--format", "csv", "--out", expbase + "_allx")
+allx = open(expbase + "_allx.csv", encoding="utf-8").read()
+check("export --all includes expired", "expired" in allx)
+for p in (csv_path, md_path, expbase + ".docx", expbase + "_t1.csv",
+          expbase + "_def.csv", expbase + "_allx.csv"):
     if os.path.exists(p):
         os.remove(p)
 

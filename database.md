@@ -158,7 +158,10 @@ python jobsdb.py upsert-batch <job_scans/YYYY-MM-DD[_label].json>
 python jobsdb.py query [filters...]
     --candidate <slug>   --category <substring>   --tier 1|2|3
     --status new|active|applied|expired|rejected|ignored   --verification verified|...
-    --location-match yes|no   --since <ISO date>   --limit N   --format table|json
+    --location-match yes|no   --since <ISO date>   --limit N   --all   --format table|json
+    By default shows only the live/actionable pipeline (new/active/applied); expired,
+    rejected, and ignored are hidden. Pass --all to include them, or --status <x> to
+    target one explicitly.
     Default sort: tier asc, then verified-live oldest-posting first (per SKILL Phase 5).
     Table output includes a `verif` column = age since last live-check (today / Nd /
     never); a trailing `!` flags never-verified or >7 days old — re-verify before applying.
@@ -190,7 +193,10 @@ python jobsdb.py export --candidate <slug> [query filters] --format csv|docx|md|
     - docx : the original tiered, color-coded Word report — requires `python-docx`
              (imported lazily; if missing, prints an install hint and skips docx only).
     - all  : write csv + md + docx.
-    Same query filters as `query` select which jobs the snapshot contains.
+    Same query filters as `query` select which jobs the snapshot contains — including the
+    default hiding of expired/rejected/ignored (use --all for the full historical dump, or
+    --status expired to export just the dead ones). So a default report never lists a
+    pulled posting as a live Tier 1/2 role.
 ```
 
 ---

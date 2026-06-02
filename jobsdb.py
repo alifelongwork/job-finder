@@ -37,6 +37,9 @@ INT_FIELDS = {"comp_floor", "comp_target"}
 VALID_TAGS = {"verified", "wrong_location", "aggregator", "unverified"}
 VALID_STATUS = {"new", "active", "applied", "expired", "rejected", "ignored"}
 TERMINAL_STATUS = {"applied", "ignored", "rejected"}
+# Dead / set-aside statuses hidden from default query+export views (opt in with --all).
+# Kept in the DB (history + dedup), just not shown unless asked.
+INACTIVE_STATUS = {"expired", "rejected", "ignored"}
 
 
 # ---------------------------------------------------------------------------
@@ -431,6 +434,11 @@ def job_filter_clause(conn, args):
         where.append("j.tier = ?"); params.append(args.tier)
     if getattr(args, "status", None):
         where.append("j.status = ?"); params.append(args.status)
+    elif not getattr(args, "all", False):
+        # No explicit status and no --all: show only the live/actionable pipeline.
+        ph = ", ".join("?" * len(INACTIVE_STATUS))
+        where.append(f"j.status NOT IN ({ph})")
+        params.extend(sorted(INACTIVE_STATUS))
     if getattr(args, "verification", None):
         where.append("j.verification_tag = ?"); params.append(args.verification)
     if getattr(args, "location_match", None):
@@ -487,7 +495,8 @@ def cmd_query(args):
               f"{r['status']:<8} {(r['company'] or '')[:22]:<22} "
               f"{(r['title'] or '')[:34]:<34} {(r['location'] or '')[:18]:<18} "
               f"{(r['posting_date'] or '?'):<10} {verif:<7} {comp(r)}")
-    print(f"\n{len(rows)} job(s).   (verif = age since last live-check; ! = never or >7d — re-verify before applying)")
+    hidden = "" if (args.status or args.all) else "  ·  expired/rejected/ignored hidden (--all to show)"
+    print(f"\n{len(rows)} job(s).   (verif = age since last live-check; ! = never or >7d — re-verify before applying){hidden}")
 
 
 # ---------------------------------------------------------------------------
@@ -751,6 +760,8 @@ def cmd_export(args):
     print(f"Exported {len(rows)} role(s):")
     for w in written:
         print(f"  {w}")
+    if not args.all and not args.status:
+        print("  (expired/rejected/ignored excluded — use --all for the full history)")
 
 
 # ---------------------------------------------------------------------------
@@ -796,6 +807,8 @@ def build_parser():
     q.add_argument("--location-match", dest="location_match", choices=["yes", "no"])
     q.add_argument("--since")
     q.add_argument("--limit", type=int)
+    q.add_argument("--all", action="store_true",
+                   help="Include expired/rejected/ignored (hidden by default)")
     q.add_argument("--format", choices=["table", "json"], default="table")
     q.set_defaults(func=cmd_query)
 
@@ -832,6 +845,8 @@ def build_parser():
     ex.add_argument("--verification", choices=sorted(VALID_TAGS))
     ex.add_argument("--location-match", dest="location_match", choices=["yes", "no"])
     ex.add_argument("--since")
+    ex.add_argument("--all", action="store_true",
+                    help="Include expired/rejected/ignored (hidden by default)")
     ex.set_defaults(func=cmd_export)
 
     return p
