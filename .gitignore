@@ -1,0 +1,48 @@
+# ── Job Search Copilot — .gitignore ────────────────────────────────────────
+# Goal: version-control the TOOL (jobsdb.py, schema.sql, the *.md skill files,
+# tests) while keeping every candidate's PERSONAL DATA out of git. This matches
+# the handoff model in HOW_TO_USE.md — share the folder, not the pipeline.
+
+# ── Credentials / session artifacts (never commit) ──
+# Leftover ATS scraping cookie jars contain live session tokens.
+cookies.txt
+*.cookies
+cookies/
+
+# ── The database (single source of truth = personal pipeline data) ──
+# Recreated from schema.sql via `python jobsdb.py init`. schema.sql IS tracked.
+jobs.db
+*.db
+*.sqlite
+*.sqlite3
+# WAL/SHM sidecars if SQLite ever runs in WAL mode
+*.db-wal
+*.db-shm
+
+# ── Candidate deliverables & personal documents ──
+# Tailored resumes, cover letters, and the base resume are personal.
+candidates/
+*.docx
+
+# ── Generated outputs (reproducible from the DB) ──
+exports/
+
+# ── Scan audit trail (dated, personal job-search history) ──
+# Kept locally as the audit trail, but it's one candidate's data — not shared.
+job_scans/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# ── OS / editor cruft ──
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
