@@ -214,6 +214,25 @@ run("company", "rename", "--from", "DoesNotExist", "--to", "Whatever", expect_ok
 r = run("company", "list")
 check("company list runs and shows merged row", "BrandNew Lab" in r.stdout)
 
+print("== company add (job-less registration) ==")
+run("company", "add", "--name", "Icarus Quantum",
+    "--careers-url", "https://www.linkedin.com/company/icarus-quantum/jobs/",
+    "--notes", "seed-stage; LinkedIn only")
+ic = db().execute("SELECT * FROM companies WHERE name='Icarus Quantum'").fetchone()
+check("job-less company added", ic is not None)
+check("added company has zero jobs",
+      db().execute("SELECT COUNT(*) FROM jobs WHERE company_id=?", (ic["id"],)).fetchone()[0] == 0)
+check("added company stored notes", ic and ic["notes"] == "seed-stage; LinkedIn only")
+check("job-less company shows in list", "Icarus Quantum" in run("company", "list").stdout)
+# idempotent: re-add fills a blank (ats_slug) without duplicating or clobbering notes
+run("company", "add", "--name", "Icarus Quantum", "--ats-slug", "icarusquantum")
+n_ic = db().execute("SELECT COUNT(*) FROM companies WHERE name='Icarus Quantum'").fetchone()[0]
+check("re-add does not duplicate", n_ic == 1, n_ic)
+ic2 = db().execute("SELECT * FROM companies WHERE name='Icarus Quantum'").fetchone()
+check("re-add filled ats_slug", ic2["ats_slug"] == "icarusquantum", ic2["ats_slug"])
+check("re-add without --notes preserved existing note",
+      ic2["notes"] == "seed-stage; LinkedIn only", ic2["notes"])
+
 print("== query filters & sort ==")
 r = run("query", "--candidate", "tester", "--format", "json")
 jobs = json.loads(r.stdout)

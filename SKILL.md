@@ -193,8 +193,11 @@ Attempt in this order:
    Lever (US): https://api.lever.co/v0/postings/[slug]?mode=json             (categories.location, workplaceType, createdAt ms)
    Lever (EU): https://api.eu.lever.co/v0/postings/[slug]?mode=json          (some orgs are on the EU instance — try both)
    Ashby:      https://api.ashbyhq.com/posting-api/job-board/[slug]          (location, isRemote, publishedDate)
-   Workable:   board API is POST-only; use the mirror jobs.workable.com/view/[id]/[title]-in-[city]-at-[company]
-               (the slug embeds the city)
+   Workable:   the documented board API is POST-only, BUT the widget account endpoint is a
+               readable GET that returns the full list (title, location, workplace_type, shortcode):
+               https://apply.workable.com/api/v1/widget/accounts/[slug]   (verified 2026-06-03, Mesa Quantum)
+               (www.workable.com/api/accounts/[slug] 302-redirects to it.) Fallback: mirror
+               jobs.workable.com/view/[id]/[title]-in-[city]-at-[company] (the slug embeds the city)
    Freshteam:  careers.[company].com/jobs (readable HTML)  ·  Paycor: recruitingbypaycor.com career site (readable)
    ```
    `createdAt` (Lever, epoch ms) and Greenhouse `updated_at` give the posting date for 4d.

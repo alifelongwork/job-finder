@@ -789,6 +789,28 @@ def cmd_company_list(args):
               f"[{r['ats_slug'] or '-'}]  {r['careers_url'] or ''}")
 
 
+def cmd_company_add(args):
+    """Register a target-list company WITHOUT needing a job for it (useful for small
+    employers with no ATS feed that only post to LinkedIn — they still belong in the
+    search scope so future sweeps don't skip them). Idempotent: if the name already
+    exists, fills blanks / updates supplied fields instead of erroring or duplicating."""
+    conn = connect()
+    existing = _company_by_name(conn, args.name)
+    cid = upsert_company(conn, {
+        "company": args.name,
+        "careers_url": args.careers_url,
+        "ats_platform": args.ats_platform,
+        "ats_slug": args.ats_slug,
+        "warm_path": args.warm_path,
+        "multi_region": args.multi_region,
+    })
+    if args.notes:  # guarded so an update without --notes never clobbers an existing note
+        conn.execute("UPDATE companies SET notes=? WHERE id=?", (args.notes, cid))
+    conn.commit()
+    conn.close()
+    print(f"{'Updated' if existing else 'Added'} company '{args.name}' (id={cid}).")
+
+
 def cmd_company_rename(args):
     """Rename a company. If the target name already exists, MERGE the source into
     it (repoint its jobs, fold in any fields the target is missing, drop the source
@@ -862,10 +884,19 @@ def build_parser():
     cset.add_argument("--json", required=True, help="JSON file: [{rank,label,keywords}]")
     cset.set_defaults(func=cmd_category_set)
 
-    co = sub.add_parser("company", help="Manage companies (list / rename / merge duplicates)")
+    co = sub.add_parser("company", help="Manage companies (list / add / rename / merge)")
     cosub = co.add_subparsers(dest="action", required=True)
     cll = cosub.add_parser("list", help="List companies with job counts")
     cll.set_defaults(func=cmd_company_list)
+    cad = cosub.add_parser("add", help="Register a target-list company (no job needed)")
+    cad.add_argument("--name", required=True)
+    cad.add_argument("--careers-url", dest="careers_url")
+    cad.add_argument("--ats-platform", dest="ats_platform")
+    cad.add_argument("--ats-slug", dest="ats_slug")
+    cad.add_argument("--multi-region", dest="multi_region", action="store_true")
+    cad.add_argument("--warm-path", dest="warm_path")
+    cad.add_argument("--notes")
+    cad.set_defaults(func=cmd_company_add)
     crn = cosub.add_parser("rename",
                            help="Rename a company; merges into the target if it already exists")
     crn.add_argument("--from", dest="from_name", required=True)
