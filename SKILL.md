@@ -200,6 +200,22 @@ Attempt in this order:
    `createdAt` (Lever, epoch ms) and Greenhouse `updated_at` give the posting date for 4d.
    If `api.lever.co` 404s for a slug, the org is on the EU instance — use `api.eu.lever.co`.
 
+   **Periodic fresh-scan sweep (catch NEW roles at companies already in the DB):** for a
+   re-scan, script a sweep that hits every tracked company's JSON feed (Greenhouse/Lever/Ashby
+   GET, Workday CXS POST), diffs incoming titles against the stored `dedup_key`s, and keeps
+   only NET-NEW roles passing the level + function + location filters — far cheaper than
+   re-fetching pages, and the feed location is already 4c-authoritative. Filter lessons
+   (verified 2026-06-03): exclude over-leveled titles
+   (`senior|sr|staff|principal|lead|manager|director|III|IV|postdoctoral`), and require an
+   explicit **US token** for any "remote" or foreign-remote (e.g. Turkey/Mexico) leaks in as a
+   false location match. A feed returning **0** vs. **erroring** are different — log the HTTP
+   status so a dead feed reads as a blind spot, not an empty result.
+   **ATS feeds drift — re-check slugs each sweep:** companies change platform on
+   acquisition/region move. Verified 2026-06-03: **Quantinuum** moved off US Lever →
+   **EU Lever** (`api.eu.lever.co/v0/postings/quantinuum`); **Weights & Biases** was acquired by
+   **CoreWeave** → its roles are now on the Greenhouse board token `coreweave` (old
+   `lever:wandb` 404s).
+
    **Workday (large defense/space/enterprise — Maxar, Trimble, Sierra Space, Lockheed,
    NCAR/UCAR, etc.):** Workday boards are JS-rendered with NO Greenhouse-style GET feed,
    which used to be a verification blind spot. Use the **Workday CXS JSON endpoint** on the
@@ -207,7 +223,10 @@ Attempt in this order:
    ```
    List (POST):  /wday/cxs/[tenant]/[careerSite]/jobs
                  body {"limit":20,"offset":0,"searchText":"<keywords>","appliedFacets":{}}
+                 headers: Content-Type AND Accept: application/json (some tenants 400 without Accept)
                  -> returns title, locationsText, externalPath, postedOn for each posting
+                 -> limit MAX is 20 (limit>20 -> HTTP 400); paginate with offset 0,20,40...
+                 -> reqid = trailing _R##### of externalPath; dedup_key = workday:{tenant}:{reqid} lowercased
    Detail (GET): /wday/cxs/[tenant]/[careerSite]/job/[externalPath]
                  -> full posting incl. exact location + datePosted (use to confirm one role live)
    ```
