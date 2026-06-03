@@ -217,6 +217,21 @@ Attempt in this order:
    site name from the careers-page URL. Note many defense/space Workday roles carry a
    clearance/citizenship gate — capture it as a screening risk.
 
+   **Big-tech embedded-data boards (Google, etc.):** some large employers run no public
+   ATS feed at all — Google's careers site is JS-rendered and its legacy JSON API
+   (`careers.google.com/api/v3`) is **dead (404)**. But the results page server-embeds the
+   full job data in a JS callback: `AF_initDataCallback({key:'ds:1', ... data:[...]})`.
+   Fetch the HTML, pull the `ds:1` block's `data` array, and read each job record
+   (`data[0][i]`): `[0]`=id, `[1]`=title, `[4][1]`=min-qualifications HTML (degree level),
+   `[9]`=locations (each `[0]`=display, `[2]`=city, `[4]`=state code). Presence in the feed
+   = live (satisfies 4c/4d); the per-location `state` field is the authoritative location.
+   Helper: `python google_careers.py "<query>" --state CO [--json]` does the fetch+parse and
+   tags each role's degree level (so over-leveled PhD-only roles are obvious at a glance).
+   Verified 2026-06-03: 20 live "quantum" reqs total, only 3 in CO (all Boulder neutral-atoms
+   **PhD Research Scientist** roles — over-leveled for early-career; no CO-located SWE role).
+   The Quantum AI software roles (Decoding/QKernel/SWE III) sit in Goleta/Santa Barbara/LA —
+   store CO-only candidates' versions of those as `wrong_location`, never Tier 1/2.
+
 **Important for multi-region companies (flagged in Phase 2d):** the same role title and
 JD shell often exists as separate ATS IDs per region. When pulling a multi-region
 company's roles, capture every ATS ID for that title and check the location field on

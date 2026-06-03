@@ -117,6 +117,13 @@ This runs automatically when the person shares their resume. Do not wait to be a
   ATS sweep (3b), LinkedIn (3c), Google Jobs / Indeed (3d), domain boards (3e), funding
   signals (3f). Do not skip 3a.
 - **Once a company's roles are verified live in 3a, skip 3b–3f for that company.**
+- **Big-tech employers with no standard ATS (Google, etc.):** these run no Greenhouse/
+  Lever/Workday feed, so 3a's JSON-API step can't reach them. Use the embedded-data path
+  documented in SKILL.md Phase 3a — for Google, run `python google_careers.py "<category
+  keyword>" --state <ST>` per ranked category; it returns live roles with authoritative
+  location + a degree-level tag. This counts as 3a company-surface verification (skip 3b–3f
+  for that company). Flag PhD-only roles as level risk and store non-CO software roles
+  `wrong_location` per the usual 4c gate.
 - **Every role must pass Phase 4 before being tiered:**
   - 4a/4b: anchor today's date, verify the URL is live via the three-step fallback
   - **4c: location match (MANDATORY HARD GATE)** — pull location directly from the
