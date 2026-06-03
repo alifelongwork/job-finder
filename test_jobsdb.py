@@ -173,6 +173,47 @@ co = db().execute("SELECT * FROM companies WHERE name='WarmCo'").fetchone()
 check("multi_region sticky (not cleared by later scan)", co["multi_region"] == 1, co["multi_region"])
 check("warm_path not clobbered by later scan", co["warm_path"] == "Ex-colleague Dana is staff eng here", co["warm_path"])
 
+print("== company rename / merge ==")
+run("candidate", "add", "--slug", "cotester", "--field", "name=CO Tester")
+def _cojob(company, key):
+    return {"company": company, "dedup_key": key, "title": "R", "url": "u" + key,
+            "location": "Boulder, CO", "location_match": True,
+            "verification_tag": "verified", "tier": 2, "category_label": "X"}
+cr1 = write_json("cr1.json", {"candidate": "cotester", "run_date": "2026-05-31",
+    "jobs": [_cojob("OldName Inc", "workday:old:r1"), _cojob("OldAlias", "workday:old:r2")]})
+run("upsert-batch", cr1)
+n_named = lambda: db().execute(
+    "SELECT COUNT(*) FROM companies WHERE name IN "
+    "('OldName Inc','OldAlias','BrandNew Lab')").fetchone()[0]
+check("two distinct company rows created", n_named() == 2, n_named())
+# simple rename (no existing target) + careers_url update
+run("company", "rename", "--from", "OldName Inc", "--to", "BrandNew Lab",
+    "--careers-url", "https://new.example/CAREERS")
+row = db().execute("SELECT * FROM companies WHERE name='BrandNew Lab'").fetchone()
+check("simple rename applied", row is not None)
+check("rename updated careers_url",
+      row and row["careers_url"] == "https://new.example/CAREERS",
+      row["careers_url"] if row else None)
+check("old name gone after rename",
+      db().execute("SELECT COUNT(*) FROM companies WHERE name='OldName Inc'").fetchone()[0] == 0)
+j1 = db().execute("SELECT co.name FROM jobs j JOIN companies co ON co.id=j.company_id "
+                  "WHERE j.dedup_key='workday:old:r1'").fetchone()
+check("job stays linked through rename", j1 and j1["name"] == "BrandNew Lab",
+      j1["name"] if j1 else None)
+# merge: rename OldAlias -> BrandNew Lab (target already exists) => repoint + drop dup
+run("company", "rename", "--from", "OldAlias", "--to", "BrandNew Lab")
+check("duplicate row removed on merge",
+      db().execute("SELECT COUNT(*) FROM companies WHERE name='OldAlias'").fetchone()[0] == 0)
+brand = db().execute("SELECT id FROM companies WHERE name='BrandNew Lab'").fetchone()
+on_brand = db().execute("SELECT COUNT(*) FROM jobs WHERE company_id=?",
+                        (brand["id"],)).fetchone()[0]
+check("both jobs repointed to merged company", on_brand == 2, on_brand)
+check("exactly one BrandNew Lab row remains",
+      db().execute("SELECT COUNT(*) FROM companies WHERE name='BrandNew Lab'").fetchone()[0] == 1)
+run("company", "rename", "--from", "DoesNotExist", "--to", "Whatever", expect_ok=False)
+r = run("company", "list")
+check("company list runs and shows merged row", "BrandNew Lab" in r.stdout)
+
 print("== query filters & sort ==")
 r = run("query", "--candidate", "tester", "--format", "json")
 jobs = json.loads(r.stdout)

@@ -217,6 +217,27 @@ Attempt in this order:
    site name from the careers-page URL. Note many defense/space Workday roles carry a
    clearance/citizenship gate — capture it as a screening risk.
 
+   **National labs & research institutions — DO NOT assume USAJOBS.** Most run their
+   OWN career site and must be swept there, not skipped as federal aggregators:
+   - **National Laboratory of the Rockies (NLR)** — formerly NREL; the DOE renamed it
+     Dec 2025 (new site `nlr.gov`). Careers run on the SAME Workday tenant `nrel`, but the
+     careersite path is now **`/NLR`** (old `/NREL` still resolves but is deprecated — expect
+     it to disappear). Use `/NLR`: its CXS **list/search** endpoint WORKS — verified
+     2026-06-03 `POST /wday/cxs/nrel/NLR/jobs` returns 200 with the full feed (24 matches),
+     whereas the old `/NREL` list 404'd (`Job_Posting_Site_ID=NREL not found`). Always prefer
+     the careersite path that `nlr.gov/careers/find-job` points to. dedup_key stays
+     `workday:nrel:{reqid}` (tenant unchanged). Lesson: when a Workday list endpoint 404s,
+     the careersite **name** is wrong — find the right one from the org's careers landing
+     page, don't assume it matches the URL slug.
+   - **NCAR/UCAR** (`ucar.wd5.myworkdayjobs.com/UCAR_Careers`) — Workday, list endpoint
+     works (200). **Ball Aerospace → BAE Systems Space & Mission Systems** (renamed after the
+     2024 BAE acquisition; `jobs.baesystems.com`, Phenom front-end over Kenexa BrassRing —
+     NOT Workday; CO space roles, most hard-require an active clearance).
+   - **SwRI** — own ATS at `swri.org/careers`. **LASP** — via CU Boulder
+     (`jobs.colorado.edu`, Workday/Taleo). Sweep these on their own surface.
+   - **NIST** is the genuine federal exception → **USAJOBS.gov** (citizenship gate, slow,
+     often GS series 1550/0854). Only here is the USAJOBS route correct.
+
    **Big-tech embedded-data boards (Google, etc.):** some large employers run no public
    ATS feed at all — Google's careers site is JS-rendered and its legacy JSON API
    (`careers.google.com/api/v3`) is **dead (404)**. But the results page server-embeds the

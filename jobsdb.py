@@ -765,6 +765,75 @@ def cmd_export(args):
 
 
 # ---------------------------------------------------------------------------
+# company (list / rename / merge) — keeps the companies table clean when an
+# employer is renamed, or when the same org was stored under two name strings
+# (companies are keyed by exact name, so "NREL" and "NREL Inc." make two rows).
+# ---------------------------------------------------------------------------
+def _company_by_name(conn, name):
+    return conn.execute("SELECT * FROM companies WHERE name = ?", (name,)).fetchone()
+
+
+def cmd_company_list(args):
+    conn = connect()
+    rows = conn.execute(
+        "SELECT co.id, co.name, co.ats_slug, co.careers_url, COUNT(j.id) AS jobs "
+        "FROM companies co LEFT JOIN jobs j ON j.company_id = co.id "
+        "GROUP BY co.id ORDER BY co.name"
+    ).fetchall()
+    conn.close()
+    if not rows:
+        print("(no companies)")
+        return
+    for r in rows:
+        print(f"  id={r['id']:<4} jobs={r['jobs']:<3} {r['name']}  "
+              f"[{r['ats_slug'] or '-'}]  {r['careers_url'] or ''}")
+
+
+def cmd_company_rename(args):
+    """Rename a company. If the target name already exists, MERGE the source into
+    it (repoint its jobs, fold in any fields the target is missing, drop the source
+    row) — so this both renames an employer and collapses duplicate rows."""
+    conn = connect()
+    src = _company_by_name(conn, args.from_name)
+    if not src:
+        sys.exit(f"No company named {args.from_name!r}. See: python jobsdb.py company list")
+    extra = {}
+    if args.careers_url:
+        extra["careers_url"] = args.careers_url
+    if args.ats_slug:
+        extra["ats_slug"] = args.ats_slug
+
+    dst = _company_by_name(conn, args.to_name) if args.to_name != args.from_name else None
+    if dst and dst["id"] != src["id"]:
+        n = conn.execute("SELECT COUNT(*) FROM jobs WHERE company_id = ?",
+                         (src["id"],)).fetchone()[0]
+        conn.execute("UPDATE jobs SET company_id = ? WHERE company_id = ?",
+                     (dst["id"], src["id"]))
+        sets = {f: src[f] for f in ("careers_url", "ats_platform", "ats_slug", "warm_path")
+                if not dst[f] and src[f]}          # fill only the target's blanks
+        if src["multi_region"]:
+            sets["multi_region"] = 1               # sticky: only ever turn ON
+        sets.update(extra)                         # explicit flags win
+        if sets:
+            conn.execute(f"UPDATE companies SET {', '.join(f'{k}=?' for k in sets)} WHERE id=?",
+                         [*sets.values(), dst["id"]])
+        conn.execute("DELETE FROM companies WHERE id = ?", (src["id"],))
+        conn.commit()
+        conn.close()
+        print(f"Merged '{args.from_name}' into existing '{args.to_name}': "
+              f"repointed {n} job(s), removed 1 duplicate row.")
+        return
+
+    sets = {"name": args.to_name, **extra}
+    conn.execute(f"UPDATE companies SET {', '.join(f'{k}=?' for k in sets)} WHERE id=?",
+                 [*sets.values(), src["id"]])
+    conn.commit()
+    conn.close()
+    tail = " (careers_url/slug updated)" if extra else ""
+    print(f"Renamed '{args.from_name}' -> '{args.to_name}'{tail}.")
+
+
+# ---------------------------------------------------------------------------
 # arg parsing
 # ---------------------------------------------------------------------------
 def build_parser():
@@ -792,6 +861,18 @@ def build_parser():
     cset.add_argument("--candidate", required=True)
     cset.add_argument("--json", required=True, help="JSON file: [{rank,label,keywords}]")
     cset.set_defaults(func=cmd_category_set)
+
+    co = sub.add_parser("company", help="Manage companies (list / rename / merge duplicates)")
+    cosub = co.add_subparsers(dest="action", required=True)
+    cll = cosub.add_parser("list", help="List companies with job counts")
+    cll.set_defaults(func=cmd_company_list)
+    crn = cosub.add_parser("rename",
+                           help="Rename a company; merges into the target if it already exists")
+    crn.add_argument("--from", dest="from_name", required=True)
+    crn.add_argument("--to", dest="to_name", required=True)
+    crn.add_argument("--careers-url", dest="careers_url", help="Also update careers_url")
+    crn.add_argument("--ats-slug", dest="ats_slug", help="Also update ats_slug")
+    crn.set_defaults(func=cmd_company_rename)
 
     ub = sub.add_parser("upsert-batch",
                         help="Insert/update jobs from a scan batch (job_scans/*.json)")
