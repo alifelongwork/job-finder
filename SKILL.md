@@ -256,6 +256,17 @@ Attempt in this order:
    site name from the careers-page URL. Note many defense/space Workday roles carry a
    clearance/citizenship gate — capture it as a screening risk.
 
+   **Re-verification caveat (sweep Part 0) — presence is reliable, absence is NOT:** a role
+   *appearing* in a feed proves it live, but a role *missing* only proves it gone when the
+   feed was fetched COMPLETELY. Greenhouse/Lever/Ashby/Workable return the whole list in one
+   call (safe to expire on absence). Workday CXS paginates (limit 20) and some tenants return
+   only a capped/default subset for an empty `searchText` (a big tenant answering `total:40`
+   is the tell) — so **never auto-expire a Workday role on sweep-absence**; confirm via the
+   GET job-detail endpoint (200=live, 404=gone) first. Also reqid schemes vary — UCAR uses
+   `REQ-2026-49-#`, not `R#####` — so matching a stored `ats_job_id` against parsed feed ids
+   can false-flag "gone". The detail GET is the tiebreak. (2026-06-04 sweep: this caught 2
+   false-gones — UCAR + NLR roles were live the whole time.)
+
    **National labs & research institutions — DO NOT assume USAJOBS.** Most run their
    OWN career site and must be swept there, not skipped as federal aggregators:
    - **National Laboratory of the Rockies (NLR)** — formerly NREL; the DOE renamed it
