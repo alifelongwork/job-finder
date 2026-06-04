@@ -199,7 +199,16 @@ Attempt in this order:
                (www.workable.com/api/accounts/[slug] 302-redirects to it.) Fallback: mirror
                jobs.workable.com/view/[id]/[title]-in-[city]-at-[company] (the slug embeds the city)
    Freshteam:  careers.[company].com/jobs (readable HTML)  ·  Paycor: recruitingbypaycor.com career site (readable)
+   Rippling:   https://api.rippling.com/platform/api/ats/v1/board/[slug]/jobs  (JSON list; UI at ats.rippling.com/[slug]/jobs)
+               (verified 2026-06-04: Boom Supersonic, D-Wave Quantum, Swimlane — several cos moved here off Greenhouse/Lever)
+   Comeet:     https://www.comeet.com/jobs/[slug]/[token]  (HTML; empty boards render a "no open positions" template — a 404 on a
+               search-indexed job means the req closed, not a bad slug). Verified 2026-06-04: Classiq, Quantum Machines.
+   Jobvite:    https://jobs.jobvite.com/[slug]/jobs  (readable). Verified 2026-06-04: Uplight, Exabeam/LogRhythm.
+   Workable v3: https://apply.workable.com/api/v3/accounts/[slug]/jobs  (paged via nextPage token; complements the v1 widget GET above).
    ```
+   **Phenom-portal / gated-Workday employers (EchoStar, Spectrum/Charter, OpenText, NetApp, Oracle):** large enterprises route
+   through a Phenom branded portal (jobs.[company].com) or a Workday tenant whose CXS endpoint bot-blocks (HTTP 422/403). No clean
+   public JSON — verify on the branded careers page itself and tag the role `unverified` (not `verified`) until re-confirmed live.
    `createdAt` (Lever, epoch ms) and Greenhouse `updated_at` give the posting date for 4d.
    If `api.lever.co` 404s for a slug, the org is on the EU instance — use `api.eu.lever.co`.
 
