@@ -218,6 +218,14 @@ Attempt in this order:
    **EU Lever** (`api.eu.lever.co/v0/postings/quantinuum`); **Weights & Biases** was acquired by
    **CoreWeave** → its roles are now on the Greenhouse board token `coreweave` (old
    `lever:wandb` 404s).
+   **When a feed drifts, also fix the company ROW** so future sweeps hit the right endpoint
+   instead of re-failing on the dead one. For an acquisition/rename, `jobsdb.py company
+   rename --from "<old>" --to "<new>" --ats-slug <slug> --careers-url <url>` (renames in place,
+   or merges if the new name already exists). `rename` carries name/slug/careers_url but has
+   **no `--ats-platform` flag** — if the platform itself changed (e.g. lever→greenhouse),
+   follow with `jobsdb.py company add --name "<new>" --ats-platform <platform>` (idempotent
+   upsert; updates only the supplied non-empty field, never clobbers). Reconciled 2026-06-04:
+   `Weights & Biases [lever:wandb]` → `CoreWeave [greenhouse:coreweave]` this way.
 
    **Workday (large defense/space/enterprise — Maxar, Trimble, Sierra Space, Lockheed,
    NCAR/UCAR, etc.):** Workday boards are JS-rendered with NO Greenhouse-style GET feed,
