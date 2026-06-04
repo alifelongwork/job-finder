@@ -734,6 +734,126 @@ def _export_docx(rows, cand, path):
     return path
 
 
+# Native .xlsx writer (stdlib only — an xlsx is a zip of XML parts). Colors each row
+# by status so the pipeline reads at a glance; freezes the header and adds an autofilter.
+# Style indices below are referenced by the per-row s="" attribute in the sheet XML.
+_XLSX_STATUS_XF = {  # status -> cellXfs index (see styles.xml below)
+    "active": 2, "expired": 3, "new": 4, "applied": 5, "rejected": 6, "ignored": 7,
+}
+_XLSX_NUMERIC = {"id", "comp_min", "comp_max"}  # written as numbers so Excel sorts them
+
+
+def _xlsx_col(n):  # 1-based column index -> letter(s)
+    s = ""
+    while n:
+        n, rem = divmod(n - 1, 26)
+        s = chr(65 + rem) + s
+    return s
+
+
+def _xlsx_esc(v):
+    return (str(v).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;"))
+
+
+def _export_xlsx(rows, cand, path):
+    import zipfile
+    ncols = len(EXPORT_COLS)
+    last = f"{_xlsx_col(ncols)}{len(rows) + 1}"
+
+    def cell(col, ref, val, xf):
+        if val is None or val == "":
+            return f'<c r="{ref}" s="{xf}"/>'
+        if col in _XLSX_NUMERIC and str(val).lstrip("-").isdigit():
+            return f'<c r="{ref}" s="{xf}"><v>{val}</v></c>'
+        return f'<c r="{ref}" s="{xf}" t="inlineStr"><is><t xml:space="preserve">{_xlsx_esc(val)}</t></is></c>'
+
+    sd = ['<row r="1">']  # header row (style 1)
+    sd += [cell(c, f"{_xlsx_col(i+1)}1", c, 1) for i, c in enumerate(EXPORT_COLS)]
+    sd.append("</row>")
+    for ri, r in enumerate(rows, start=2):
+        xf = _XLSX_STATUS_XF.get(r["status"], 0)
+        sd.append(f'<row r="{ri}">')
+        sd += [cell(c, f"{_xlsx_col(i+1)}{ri}", r[c], xf) for i, c in enumerate(EXPORT_COLS)]
+        sd.append("</row>")
+
+    # helpful widths for the wide free-text columns (1-based positions in EXPORT_COLS)
+    widths = {5: 22, 6: 40, 7: 26, 14: 46, 19: 50, 20: 44}
+    cols_xml = "".join(f'<col min="{i}" max="{i}" width="{w}" customWidth="1"/>'
+                       for i, w in widths.items())
+    sheet = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        '<sheetViews><sheetView workbookViewId="0">'
+        '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'
+        '</sheetView></sheetViews>'
+        '<sheetFormatPr defaultRowHeight="15"/>'
+        f'<cols>{cols_xml}</cols>'
+        f'<sheetData>{"".join(sd)}</sheetData>'
+        f'<autoFilter ref="A1:{last}"/>'
+        '</worksheet>')
+
+    def solid(rgb):
+        return f'<fill><patternFill patternType="solid"><fgColor rgb="FF{rgb}"/></patternFill></fill>'
+    styles = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        '<fonts count="2">'
+        '<font><sz val="11"/><name val="Calibri"/></font>'
+        '<font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font></fonts>'
+        '<fills count="9">'
+        '<fill><patternFill patternType="none"/></fill>'
+        '<fill><patternFill patternType="gray125"/></fill>'
+        + solid("305496") + solid("C6EFCE") + solid("FFC7CE") + solid("FFEB9C")
+        + solid("BDD7EE") + solid("F8CBAD") + solid("D9D9D9") + '</fills>'
+        '<borders count="1"><border/></borders>'
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+        '<cellXfs count="8">'
+        '<xf fontId="0" fillId="0" borderId="0"/>'
+        '<xf fontId="1" fillId="2" borderId="0" applyFont="1" applyFill="1"/>'
+        '<xf fillId="3" borderId="0" applyFill="1"/>'
+        '<xf fillId="4" borderId="0" applyFill="1"/>'
+        '<xf fillId="5" borderId="0" applyFill="1"/>'
+        '<xf fillId="6" borderId="0" applyFill="1"/>'
+        '<xf fillId="7" borderId="0" applyFill="1"/>'
+        '<xf fillId="8" borderId="0" applyFill="1"/>'
+        '</cellXfs></styleSheet>')
+
+    parts = {
+        "[Content_Types].xml":
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            '</Types>',
+        "_rels/.rels":
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            '</Relationships>',
+        "xl/workbook.xml":
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            '<sheets><sheet name="Pipeline" sheetId="1" r:id="rId1"/></sheets></workbook>',
+        "xl/_rels/workbook.xml.rels":
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            '</Relationships>',
+        "xl/styles.xml": styles,
+        "xl/worksheets/sheet1.xml": sheet,
+    }
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data in parts.items():
+            z.writestr(name, data)
+    return path
+
+
 def cmd_export(args):
     conn = connect()
     cand = get_candidate(conn, args.candidate)
@@ -745,7 +865,7 @@ def cmd_export(args):
     os.makedirs(os.path.join(HERE, "exports"), exist_ok=True)
     base = args.out or os.path.join(HERE, "exports", f"{cand['slug']}_pipeline_{today()}")
     base = os.path.splitext(base)[0]  # strip any extension; we add per-format
-    fmts = ["csv", "md", "docx"] if args.format == "all" else [args.format]
+    fmts = ["csv", "md", "xlsx", "docx"] if args.format == "all" else [args.format]
     written = []
     for fmt in fmts:
         path = f"{base}.{fmt}"
@@ -753,6 +873,8 @@ def cmd_export(args):
             written.append(_export_csv(rows, path))
         elif fmt == "md":
             written.append(_export_md(rows, cand, path))
+        elif fmt == "xlsx":
+            written.append(_export_xlsx(rows, cand, path))
         elif fmt == "docx":
             res = _export_docx(rows, cand, path)
             if res:
@@ -948,9 +1070,9 @@ def build_parser():
     mk.add_argument("--note", help="Append a timestamped note")
     mk.set_defaults(func=cmd_mark)
 
-    ex = sub.add_parser("export", help="Export the pipeline (csv/md/docx) FROM the DB")
+    ex = sub.add_parser("export", help="Export the pipeline (csv/md/xlsx/docx) FROM the DB")
     ex.add_argument("--candidate", required=True)
-    ex.add_argument("--format", choices=["csv", "md", "docx", "all"], default="all")
+    ex.add_argument("--format", choices=["csv", "md", "xlsx", "docx", "all"], default="all")
     ex.add_argument("--out", help="Output path base (extension added per format)")
     ex.add_argument("--category"); ex.add_argument("--tier", type=int, choices=[1, 2, 3])
     ex.add_argument("--status", choices=sorted(VALID_STATUS))

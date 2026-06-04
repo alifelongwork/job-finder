@@ -344,8 +344,30 @@ if os.path.exists(md_path):
     md = open(md_path, encoding="utf-8").read()
     check("md is a tiered report", "# Job Opportunities" in md and "Tier 1" in md)
     check("md surfaces excluded wrong-location", "Excluded — Wrong Location" in md)
+# xlsx: native (stdlib zip-of-XML) export must be a valid, well-formed workbook
+# with the header styled and data rows colored by status.
+import zipfile, xml.dom.minidom as _MD
+run("export", "--candidate", "tester", "--all", "--format", "xlsx", "--out", expbase)
+xlsx_path = expbase + ".xlsx"
+check("xlsx export written", os.path.exists(xlsx_path))
+if os.path.exists(xlsx_path):
+    check("xlsx is a valid zip", zipfile.is_zipfile(xlsx_path))
+    _z = zipfile.ZipFile(xlsx_path)
+    _ok = True
+    for _n in _z.namelist():
+        try:
+            _MD.parseString(_z.read(_n))
+        except Exception:
+            _ok = False
+    check("xlsx parts are well-formed XML", _ok)
+    _sheet = _z.read("xl/worksheets/sheet1.xml").decode()
+    check("xlsx header row uses header style", '<row r="1">' in _sheet and ' s="1"' in _sheet)
+    check("xlsx colors expired rows red (xf 3)", ' s="3"' in _sheet)  # agg_id expired above
+    _z.close()
+
 run("export", "--candidate", "tester", "--format", "all", "--out", expbase)
-check("export all writes csv+md", os.path.exists(csv_path) and os.path.exists(md_path))
+check("export all writes csv+md+xlsx",
+      os.path.exists(csv_path) and os.path.exists(md_path) and os.path.exists(xlsx_path))
 # filter passthrough: tier-1 only export has fewer data rows than full
 run("export", "--candidate", "tester", "--format", "csv", "--tier", "1", "--out", expbase + "_t1")
 t1 = open(expbase + "_t1.csv", encoding="utf-8").read()
@@ -357,7 +379,7 @@ check("export hides expired by default", "expired" not in deftxt)
 run("export", "--candidate", "tester", "--all", "--format", "csv", "--out", expbase + "_allx")
 allx = open(expbase + "_allx.csv", encoding="utf-8").read()
 check("export --all includes expired", "expired" in allx)
-for p in (csv_path, md_path, expbase + ".docx", expbase + "_t1.csv",
+for p in (csv_path, md_path, xlsx_path, expbase + ".docx", expbase + "_t1.csv",
           expbase + "_def.csv", expbase + "_allx.csv"):
     if os.path.exists(p):
         os.remove(p)

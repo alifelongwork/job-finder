@@ -184,15 +184,19 @@ python jobsdb.py mark <job_id> [--status ...] [--verified] [--resume <path>]
     Update one job: status transition, refresh last_verified (--verified), attach
     generated document paths, log notes.
 
-python jobsdb.py export --candidate <slug> [query filters] --format csv|docx|md|all [--out <path>]
+python jobsdb.py export --candidate <slug> [query filters] --format csv|md|xlsx|docx|all [--out <path>]
     Optional. Generate a report snapshot FROM the DB (not the source of truth).
     Default output dir: exports/<slug>_pipeline_<date>.<ext>. Accepts the same filters as
     `query` (--tier/--status/--category/--verification/--location-match/--since).
     - csv  : flat, one row per job keyed by dedup_key/job_id — stdlib `csv`, no deps.
     - md   : tiered Markdown report — stdlib, no deps.
+    - xlsx : flat Excel workbook, same columns as csv, with rows color-coded by status
+             (green=active, red=expired, amber=new, blue=applied, orange=rejected,
+             grey=ignored), frozen header + autofilter. Native (stdlib `zipfile` writes the
+             xlsx zip-of-XML) — NO dependency. This is the colored-columns view to hand a user.
     - docx : the original tiered, color-coded Word report — requires `python-docx`
              (imported lazily; if missing, prints an install hint and skips docx only).
-    - all  : write csv + md + docx.
+    - all  : write csv + md + xlsx + docx.
     Same query filters as `query` select which jobs the snapshot contains — including the
     default hiding of expired/rejected/ignored (use --all for the full historical dump, or
     --status expired to export just the dead ones). So a default report never lists a
