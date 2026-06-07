@@ -97,7 +97,7 @@ you your slug; see your name with `python jobsdb.py candidate list`).
 python jobsdb.py query --candidate me                      # everything, ranked
 python jobsdb.py query --candidate me --tier 1             # just Tier 1
 python jobsdb.py query --candidate me --status new         # only ones you haven't actioned
-python jobsdb.py query --candidate me --category quantum   # by job category
+python jobsdb.py query --candidate me --category software  # by job category
 python jobsdb.py query --candidate me --status applied     # what you've applied to
 ```
 
@@ -118,6 +118,15 @@ python jobsdb.py mark 3 --note "recruiter emailed me"
 ```
 python jobsdb.py reverify list --candidate me
 ```
+
+**Look up or check a company:**
+```
+python jobsdb.py company list                  # all companies being tracked
+python jobsdb.py company show --like acme       # find one by partial name
+python jobsdb.py company show "Acme Robotics"   # full record + whether its feed is verified
+```
+You can also just ask Claude "is \<company\> actually hiring, and what's their careers feed?"
+— it resolves the company's job feed and records the result so future searches hit it directly.
 
 **Statuses you'll see:** `new` (just found) · `active` (confirmed still live) · `applied` ·
 `expired` (gone) · `rejected` · `ignored` (you hid it).
