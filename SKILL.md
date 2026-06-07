@@ -103,10 +103,19 @@ priority order — build the company list for the rank-1 category most thoroughl
 rank-2, then rank-3. Tag each company and resulting role with the `category_label` it came
 from so the pipeline can be queried by category later (e.g. `query --category quantum`).
 
-Based on the candidate's technical domain, identify 3–5 company categories that hire this profile. Examples:
+Based on the candidate's qualifications, identify 3–5 company categories that hire this
+profile. This is **domain-driven** — derive it from the resume + ranked categories, not a
+fixed list. Examples across fields:
 - Optical/EO engineer → space imaging startups, defense-tech, laser companies, national labs
 - ML engineer → AI infrastructure, autonomous systems, applied AI companies
 - Mechanical engineer → aerospace, robotics, hardware startups, defense
+- IT / systems administrator → MSPs & managed-IT providers, healthcare & hospital systems,
+  universities & school districts, financial-services & insurance IT, state/local government,
+  datacenter/colocation & cloud operators, and the internal IT of any large local employer
+- Registered nurse → hospital systems, clinics, telehealth, travel-nursing agencies
+
+See `domain-boards.md` for board sources per domain, and `examples/it-sysadmin-profile.md`
+for a worked non-engineering example.
 
 ### Step 2b: Build Target Company List
 Search for companies in each category matching:
@@ -123,10 +132,28 @@ Target 20–40 companies. Use these searches:
 crunchbase "[domain]" "[city]" funded 2023 OR 2024 OR 2025
 ```
 
-Also use known lists:
+Also use known lists (pick what fits the domain):
 - For space/defense: SpaceNews company index, Defense News top 100
 - For deep tech: YC company directory, a16z portfolio, Lux Capital portfolio
 - For quantum/photonics: The Quantum Insider company list
+- For IT/MSP: Channel Futures MSP 501, CRN MSP/solution-provider lists, regional MSP directories
+
+**Resolve & record each company's hiring surface (build the *verified* target list).** For
+each candidate company, resolve its ATS feed and persist it so this run and future sweeps hit
+it directly:
+1. Check whether it's already tracked: `python jobsdb.py company show --like <part>`.
+2. Resolve its feed: `python ats_probe.py "<Company Name>"` → which platform/slug resolved
+   + open-role count (eyeball the sample titles to reject a wrong-company slug collision).
+3. Record the outcome on the company row (`ats_probe.py` prints the exact line):
+   - resolved feed → `jobsdb.py company verify "<Company>" --status feed_verified
+     --ats-platform <p> --ats-slug <s> --open-roles <n>`
+   - careers page but no clean feed → `--status careers_only`
+   - couldn't resolve (transient/unknown) → `--status unresolved` (recheck next run)
+   - no hiring surface found at all → `--status unverified`
+4. A relevant company with no current matching role still belongs on the list — register it
+   with `jobsdb.py company add` as a `jobs=0` manual-monitor (completeness rule), not skipped.
+
+This persisted, verified company list is what Phase 3a then sweeps for live roles.
 
 ### Step 2c: Flag Warm Paths
 For each company, note:
@@ -195,20 +222,30 @@ Attempt in this order:
    Ashby:      https://api.ashbyhq.com/posting-api/job-board/[slug]          (location, isRemote, publishedDate)
    Workable:   the documented board API is POST-only, BUT the widget account endpoint is a
                readable GET that returns the full list (title, location, workplace_type, shortcode):
-               https://apply.workable.com/api/v1/widget/accounts/[slug]   (verified 2026-06-03, Mesa Quantum)
+               https://apply.workable.com/api/v1/widget/accounts/[slug]   (verified 2026-06-03)
                (www.workable.com/api/accounts/[slug] 302-redirects to it.) Fallback: mirror
                jobs.workable.com/view/[id]/[title]-in-[city]-at-[company] (the slug embeds the city)
    Freshteam:  careers.[company].com/jobs (readable HTML)  ·  Paycor: recruitingbypaycor.com career site (readable)
    Rippling:   https://api.rippling.com/platform/api/ats/v1/board/[slug]/jobs  (JSON list; UI at ats.rippling.com/[slug]/jobs)
-               (verified 2026-06-04: Boom Supersonic, D-Wave Quantum, Swimlane — several cos moved here off Greenhouse/Lever)
+               (verified 2026-06-04; several companies have migrated here off Greenhouse/Lever)
    Comeet:     https://www.comeet.com/jobs/[slug]/[token]  (HTML; empty boards render a "no open positions" template — a 404 on a
-               search-indexed job means the req closed, not a bad slug). Verified 2026-06-04: Classiq, Quantum Machines.
+               search-indexed job means the req closed, not a bad slug). Verified 2026-06-04.
    Jobvite:    https://jobs.jobvite.com/[slug]/jobs  (readable). Verified 2026-06-04: Uplight, Exabeam/LogRhythm.
    Workable v3: https://apply.workable.com/api/v3/accounts/[slug]/jobs  (paged via nextPage token; complements the v1 widget GET above).
    ```
-   **Phenom-portal / gated-Workday employers (EchoStar, Spectrum/Charter, OpenText, NetApp, Oracle):** large enterprises route
-   through a Phenom branded portal (jobs.[company].com) or a Workday tenant whose CXS endpoint bot-blocks (HTTP 422/403). No clean
-   public JSON — verify on the branded careers page itself and tag the role `unverified` (not `verified`) until re-confirmed live.
+   **Phenom-portal / gated-Workday employers:** some large enterprises route through a Phenom branded portal (jobs.[company].com)
+   or a Workday tenant whose CXS endpoint bot-blocks (HTTP 422/403) — no clean public JSON. Verify on the branded careers page
+   itself and tag the role `unverified` (not `verified`) until re-confirmed live.
+
+   **`ats_probe.py` — the ATS Cookbook, automated.** Rather than hand-trying each endpoint, run
+   `python ats_probe.py "<Company Name>"`: it derives candidate slugs from the name and probes
+   Greenhouse, Lever (US+EU), Ashby, Workable, and Rippling, reporting which platform/slug
+   resolved, the open-role count, and sample titles/locations. Workday is opt-in
+   (`--workday-tenant/--workday-site/--workday-n`, since a bare slug can't address it). It prints
+   a ready-to-paste `jobsdb.py company verify ...` line so the resolved feed is recorded on the
+   company row (see Phase 2b). A guessed slug can resolve to a *different* company's board, so
+   eyeball the sample titles before trusting a derived-slug hit; pass `--slug` when you know it.
+
    `createdAt` (Lever, epoch ms) and Greenhouse `updated_at` give the posting date for 4d.
    If `api.lever.co` 404s for a slug, the org is on the EU instance — use `api.eu.lever.co`.
 
@@ -223,18 +260,18 @@ Attempt in this order:
    false location match. A feed returning **0** vs. **erroring** are different — log the HTTP
    status so a dead feed reads as a blind spot, not an empty result.
    **ATS feeds drift — re-check slugs each sweep:** companies change platform on
-   acquisition/region move. Verified 2026-06-03: **Quantinuum** moved off US Lever →
-   **EU Lever** (`api.eu.lever.co/v0/postings/quantinuum`); **Weights & Biases** was acquired by
-   **CoreWeave** → its roles are now on the Greenhouse board token `coreweave` (old
-   `lever:wandb` 404s).
+   acquisition/region move (e.g. a US Lever org migrating to EU Lever, or a Greenhouse board
+   token changing after an acquisition). When a feed 404s, find the new board rather than
+   marking the company dead — `ats_probe.py` (see the ATS Cookbook note below) automates the
+   re-resolve.
    **When a feed drifts, also fix the company ROW** so future sweeps hit the right endpoint
    instead of re-failing on the dead one. For an acquisition/rename, `jobsdb.py company
    rename --from "<old>" --to "<new>" --ats-slug <slug> --careers-url <url>` (renames in place,
    or merges if the new name already exists). `rename` carries name/slug/careers_url but has
    **no `--ats-platform` flag** — if the platform itself changed (e.g. lever→greenhouse),
    follow with `jobsdb.py company add --name "<new>" --ats-platform <platform>` (idempotent
-   upsert; updates only the supplied non-empty field, never clobbers). Reconciled 2026-06-04:
-   `Weights & Biases [lever:wandb]` → `CoreWeave [greenhouse:coreweave]` this way.
+   upsert; updates only the supplied non-empty field, never clobbers).
+   (Worked examples of real drifts/acquisitions: `examples/austin-quantum-field-notes.md`.)
 
    **Workday (large defense/space/enterprise — Maxar, Trimble, Sierra Space, Lockheed,
    NCAR/UCAR, etc.):** Workday boards are JS-rendered with NO Greenhouse-style GET feed,
@@ -267,26 +304,17 @@ Attempt in this order:
    can false-flag "gone". The detail GET is the tiebreak. (2026-06-04 sweep: this caught 2
    false-gones — UCAR + NLR roles were live the whole time.)
 
-   **National labs & research institutions — DO NOT assume USAJOBS.** Most run their
-   OWN career site and must be swept there, not skipped as federal aggregators:
-   - **National Laboratory of the Rockies (NLR)** — formerly NREL; the DOE renamed it
-     Dec 2025 (new site `nlr.gov`). Careers run on the SAME Workday tenant `nrel`, but the
-     careersite path is now **`/NLR`** (old `/NREL` still resolves but is deprecated — expect
-     it to disappear). Use `/NLR`: its CXS **list/search** endpoint WORKS — verified
-     2026-06-03 `POST /wday/cxs/nrel/NLR/jobs` returns 200 with the full feed (24 matches),
-     whereas the old `/NREL` list 404'd (`Job_Posting_Site_ID=NREL not found`). Always prefer
-     the careersite path that `nlr.gov/careers/find-job` points to. dedup_key stays
-     `workday:nrel:{reqid}` (tenant unchanged). Lesson: when a Workday list endpoint 404s,
-     the careersite **name** is wrong — find the right one from the org's careers landing
-     page, don't assume it matches the URL slug.
-   - **NCAR/UCAR** (`ucar.wd5.myworkdayjobs.com/UCAR_Careers`) — Workday, list endpoint
-     works (200). **Ball Aerospace → BAE Systems Space & Mission Systems** (renamed after the
-     2024 BAE acquisition; `jobs.baesystems.com`, Phenom front-end over Kenexa BrassRing —
-     NOT Workday; CO space roles, most hard-require an active clearance).
-   - **SwRI** — own ATS at `swri.org/careers`. **LASP** — via CU Boulder
-     (`jobs.colorado.edu`, Workday/Taleo). Sweep these on their own surface.
-   - **NIST** is the genuine federal exception → **USAJOBS.gov** (citizenship gate, slow,
-     often GS series 1550/0854). Only here is the USAJOBS route correct.
+   **National labs, universities & research institutions — DO NOT assume USAJOBS.** Most
+   run their OWN career site (frequently Workday or Taleo) and must be swept there, not
+   skipped as federal aggregators. When a Workday list endpoint 404s, the careersite *name*
+   is usually wrong — derive the right one from the org's careers landing page rather than
+   assuming it matches a stored URL slug. Watch for renames/acquisitions (a lab or division
+   can change names while keeping the same Workday tenant, so the dedup_key tenant is stable
+   even when the careersite path moves). The genuine exception is true **federal civilian**
+   roles (e.g. NIST), which do post on **USAJOBS.gov** (citizenship gate, slow). Many
+   defense/space lab roles carry a clearance/citizenship gate — capture it as a screening risk.
+   (Worked CO-lab examples — NLR/NREL, NCAR/UCAR, SwRI, LASP — are in
+   `examples/austin-quantum-field-notes.md`.)
 
    **Big-tech embedded-data boards (Google, etc.):** some large employers run no public
    ATS feed at all — Google's careers site is JS-rendered and its legacy JSON API
@@ -296,12 +324,8 @@ Attempt in this order:
    (`data[0][i]`): `[0]`=id, `[1]`=title, `[4][1]`=min-qualifications HTML (degree level),
    `[9]`=locations (each `[0]`=display, `[2]`=city, `[4]`=state code). Presence in the feed
    = live (satisfies 4c/4d); the per-location `state` field is the authoritative location.
-   Helper: `python google_careers.py "<query>" --state CO [--json]` does the fetch+parse and
-   tags each role's degree level (so over-leveled PhD-only roles are obvious at a glance).
-   Verified 2026-06-03: 20 live "quantum" reqs total, only 3 in CO (all Boulder neutral-atoms
-   **PhD Research Scientist** roles — over-leveled for early-career; no CO-located SWE role).
-   The Quantum AI software roles (Decoding/QKernel/SWE III) sit in Goleta/Santa Barbara/LA —
-   store CO-only candidates' versions of those as `wrong_location`, never Tier 1/2.
+   Helper: `python google_careers.py "<query>" --state <ST> [--json]` does the fetch+parse and
+   tags each role's degree level (so over-leveled roles are obvious at a glance).
 
 **Important for multi-region companies (flagged in Phase 2d):** the same role title and
 JD shell often exists as separate ATS IDs per region. When pulling a multi-region
@@ -537,7 +561,7 @@ across runs (see `database.md`):
 ### 7b: Assemble the batch and upsert
 
 Write a single scan batch file into the **`job_scans/`** folder, named
-`YYYY-MM-DD[_label].json` (e.g. `job_scans/2026-05-31_quantum.json` — add a short label if
+`YYYY-MM-DD[_label].json` (e.g. `job_scans/2026-05-31_swe.json` — add a short label if
 you run more than one scan in a day). It contains **every** role found — Tier 1/2/3, plus
 `wrong_location` and `unverified` ones (they're stored, they just aren't tiered). Each job
 carries its `verification_tag`, `tier`, `location`, `location_match`, `category_label`,

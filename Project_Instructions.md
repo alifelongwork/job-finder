@@ -42,12 +42,16 @@ Before asking anything:
    constraints and ranked categories.
 2. **Check Claude Code memory** for any supplementary context not in the DB.
 
-State the stored brief back for confirmation rather than re-asking from scratch:
+State the stored brief back for confirmation rather than re-asking from scratch — e.g.:
 
-> "I have you as Austin Long — Arvada, CO; Colorado-based or fully remote only, no
-> relocation; US Citizen, no active clearance; $80K+ floor. Category priority:
-> (1) Quantum software/computing, (2) Quantum-adjacent software, (3) General SWE/AI.
-> Confirm this is still accurate?"
+> "I have you as [Name] — [city]; [location/remote rule]; [citizenship], [clearance];
+> [$floor] floor. Category priority: (1) ..., (2) ..., (3) .... Confirm this is still accurate?"
+
+Two real shapes, for illustration (full versions in `examples/`):
+> — early-career SWE: "Arvada, CO; CO-or-remote, no relocation; US Citizen, no clearance;
+> $80K+; (1) quantum software, (2) quantum-adjacent, (3) general SWE/AI."
+> — experienced IT admin: "Denver metro, hybrid-or-remote; US Citizen; $85K+; (1) systems/
+> infrastructure admin, (2) cloud ops, (3) IT lead."
 
 If this is a **new candidate** (new resume, no DB match), extract their profile from the
 resume per `SKILL.md` Phase 1 and register them (Step 3 below).
@@ -76,9 +80,9 @@ python jobsdb.py category set --candidate <slug> --json <categories.json>
 ```
 
 The **ranked category list** is what drives which searches run and in what priority order.
-Each candidate defines their own (e.g. Austin: quantum → quantum-adjacent → general SWE/AI;
-a friend will have a different set based on their resume and goals). Confirm the categories
-before searching.
+Each candidate defines their own based on their resume and goals (e.g. a SWE might rank
+quantum → quantum-adjacent → general SWE/AI; an IT admin might rank systems/infra → cloud
+ops → IT lead). Confirm the categories before searching.
 
 ### Step 4: Confirm the brief out loud before searching
 
@@ -113,6 +117,11 @@ This runs automatically when the person shares their resume. Do not wait to be a
 - Read `SKILL.md` and `domain-boards.md`
 - Run the full job search process (Phases 1–5 in SKILL.md), driven by the candidate's
   **ranked categories** — search the rank-1 category most thoroughly, then rank-2, etc.
+- **Build the verified company list first (Phase 2):** derive target companies from the
+  candidate's qualifications, resolve each company's hiring feed with
+  `python ats_probe.py "<name>"`, and record it on the company row via `jobsdb.py company
+  verify` (use `jobsdb.py company show --like` to avoid duplicating a tracked company). This
+  persisted list is what 3a then sweeps.
 - **Source hierarchy is strict:** company careers page / ATS subdomain first (3a), then
   ATS sweep (3b), LinkedIn (3c), Google Jobs / Indeed (3d), domain boards (3e), funding
   signals (3f). Do not skip 3a.
@@ -122,7 +131,7 @@ This runs automatically when the person shares their resume. Do not wait to be a
   documented in SKILL.md Phase 3a — for Google, run `python google_careers.py "<category
   keyword>" --state <ST>` per ranked category; it returns live roles with authoritative
   location + a degree-level tag. This counts as 3a company-surface verification (skip 3b–3f
-  for that company). Flag PhD-only roles as level risk and store non-CO software roles
+  for that company). Flag over-leveled roles as level risk and store out-of-location roles
   `wrong_location` per the usual 4c gate.
 - **Every role must pass Phase 4 before being tiered:**
   - 4a/4b: anchor today's date, verify the URL is live via the three-step fallback

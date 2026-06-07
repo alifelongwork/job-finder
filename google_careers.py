@@ -12,9 +12,9 @@ Field map inside each job record (data[0][i]):
     [4][1]   minimum-qualifications HTML (degree level lives here)
     [9]      list of locations; each loc: [0]=display, [2]=city, [4]=state code
 
-Usage:
-    python google_careers.py quantum --state CO
-    python google_careers.py "software engineer" --state CO --json
+Usage (the query is whatever fits the candidate's domain):
+    python google_careers.py "software engineer" --state CO
+    python google_careers.py "systems administrator" --state CO --json
 A role present in this feed is LIVE on the company surface (satisfies Phase 4c/4d).
 """
 import argparse, json, re, sys, urllib.parse, urllib.request
@@ -91,7 +91,7 @@ def parse(html, state=None):
 
 def main():
     ap = argparse.ArgumentParser(description="Verify Google careers roles (live + location).")
-    ap.add_argument("query", nargs="?", default="quantum")
+    ap.add_argument("query", nargs="?", default="software engineer")
     ap.add_argument("--state", help="2-letter state filter, e.g. CO")
     ap.add_argument("--json", action="store_true", help="emit JSON")
     a = ap.parse_args()

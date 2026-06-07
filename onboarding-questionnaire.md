@@ -60,8 +60,9 @@ and targeting.
 6. **Ranked job categories** → `candidate_categories` (via `category set`)
    - List the industries / role types you want, **best first**. These drive which searches
      run and in what priority order.
-   - *Example (Austin):* 1) Quantum software/computing, 2) Quantum-adjacent software,
-     3) General SWE/AI.
+   - *Examples:* a SWE — 1) Quantum software/computing, 2) Quantum-adjacent software,
+     3) General SWE/AI; an IT admin — 1) Systems/Infrastructure admin, 2) Cloud/DevOps ops,
+     3) IT lead. (See `examples/` for full worked profiles.)
 
 7. **Seniority you're targeting + your years of experience** → field `notes`
    - This can be a **range / multiple levels** (e.g. "new-grad through mid"), not a single
