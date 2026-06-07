@@ -12,6 +12,7 @@ cookies/
 # ── The database (single source of truth = personal pipeline data) ──
 # Recreated from schema.sql via `python jobsdb.py init`. schema.sql IS tracked.
 jobs.db
+jobs.db.bak*
 *.db
 *.sqlite
 *.sqlite3
