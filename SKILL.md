@@ -695,6 +695,16 @@ the report is trustworthy or how the location filter performed. Surface it up fr
 - **Never report a role as Tier 1 or Tier 2 without attempting verification** through
   the three-step fallback in Phase 4b. Skipping verification is the failure mode this
   workflow exists to prevent.
+- **`verified` requires posting-level proof, not company-level.** Tag a role `verified`
+  ONLY when its **exact posting URL returned 200** OR it appeared in a fully-pulled ATS JSON
+  feed carrying that posting's authoritative apply URL. A resolvable *company feed/careers
+  page*, or a role seen only in a search-engine snippet, is company-level evidence — tag
+  those roles `aggregator` or `unverified`, never `verified`. **Never construct, guess, or
+  infer a posting URL or ATS job-id** — if you didn't read it from the live posting/feed,
+  you don't have it. (Real failure, 2026-06-07 rebuild: a discovery lane that couldn't reach
+  several Lever/Workday feeds reported roles from snippets as `verified` with inferred UUIDs;
+  ~7/72 links 404'd, and two "roles" did not exist in the live feed at all. Company-level
+  `feed_verified` ≠ posting-level `verified`.)
 - **Never assign a Tier to a role that has not passed Phase 4c location match.** Wrong
   location is auto-excluded — there is no override.
 - **Never trust aggregator location fields.** Workable, Greenhouse, Lever, Ashby ATS
