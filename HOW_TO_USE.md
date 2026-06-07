@@ -11,7 +11,8 @@ want to inspect or manage your pipeline yourself.
 
 ## 1. What you need (one-time)
 
-- **Claude Code** installed (the desktop app or CLI), opened **in this folder**.
+- **Claude Code** installed (CLI, desktop, or web), opened **in this folder**. New to it? The
+  [README](README.md) has step-by-step install instructions for every OS.
 - **Python 3** (check with `python --version` — any 3.8+ is fine). It's already on most
   machines.
 - *(Optional)* **python-docx**, only if you want Word (.docx) report exports:
@@ -38,11 +39,10 @@ Claude will:
    clearance** (none / active / previously held), **where you want to work** (cities, metro,
    or fully remote) and relocation, your **comp floor/target**, and any companies to avoid
    or timeline. (Answer what applies — e.g. "US citizen, no clearance, remote-only.")
-3. Ask you to rank the **kinds of jobs you want**, in priority order. For example:
-   > 1. Quantum software / computing
-   > 2. Quantum-adjacent software
-   > 3. General software engineering / AI
-   Yours will be different — list the industries/role types you care about, best first.
+3. Ask you to rank the **kinds of jobs you want**, in priority order — yours are whatever fits
+   your field. For example, a software engineer might rank "quantum software → quantum-adjacent
+   → general SWE/AI"; an IT admin might rank "systems/infrastructure → cloud/DevOps ops → IT
+   lead." List the industries/role types you care about, best first.
 4. Save all of that to the local database so it remembers you next time.
 5. Run the search and store the results.
 
@@ -140,14 +140,18 @@ or run:
 ```
 python jobsdb.py export --candidate me --format all
 ```
-This writes three files into the `exports/` folder:
-- **`.csv`** — open in Excel / Google Sheets; one row per job, sortable and filterable.
+This writes four files into the `exports/` folder:
+- **`.xlsx`** — an Excel workbook, one row per job, **color-coded by status** (green=active,
+  red=expired, amber=new, blue=applied, orange=rejected, grey=ignored), with a frozen header
+  and autofilter. No install needed — it's the spreadsheet most people want.
+- **`.csv`** — the same columns as plain text (Excel / Google Sheets), sortable and filterable.
 - **`.md`** — a clean tiered report you can read or paste anywhere.
 - **`.docx`** — the formatted Word report (needs `python-docx`; skipped with a note if you
   don't have it).
 
-Use `--format csv` (or `md`, or `docx`) for just one. You can also export a subset, e.g.
-`--tier 1` or `--status new`.
+Use `--format xlsx` (or `csv`, `md`, `docx`) for just one. Add **`--all`** to include your full
+history — expired/rejected/ignored rows too (they show red/grey); without it you get just the
+live pipeline. You can also export a subset, e.g. `--tier 1` or `--status new`.
 
 ---
 
@@ -203,7 +207,7 @@ categories — the search adapts to whoever's resume it's given.
   your machine (it uses a throwaway database and won't touch your data).
 - `job_scans/` — a dated record of every search (one `YYYY-MM-DD.json` per scan). You don't
   need to touch these; they're the audit trail of what each search found.
-- `exports/` — where `export` writes your CSV / Markdown / Word report snapshots.
+- `exports/` — where `export` writes your Excel / CSV / Markdown / Word report snapshots.
 
 Nothing here sends your data anywhere — the database is a single local file. Searching uses
 the web (that's how it finds jobs), but your résumé and pipeline stay on your computer.
