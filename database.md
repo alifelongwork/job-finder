@@ -38,7 +38,7 @@ document as a substitute for storing the job.
 | keywords | TEXT | comma-separated search terms for this bucket |
 | | | UNIQUE(candidate_id, label) |
 
-Example for Austin:
+Example categories (illustrative — each candidate defines their own):
 | rank | label | keywords |
 |------|-------|----------|
 | 1 | Quantum software/computing/tech | quantum software, quantum computing, qiskit, cirq, quantum SDK |
@@ -46,6 +46,7 @@ Example for Austin:
 | 3 | General SWE / AI | software engineer, backend, ML engineer, AI engineer |
 
 ### `companies` — target-list companies
+Global (not candidate-scoped) — under one-DB-per-person each user has their own.
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INTEGER PK | |
@@ -56,6 +57,13 @@ Example for Austin:
 | multi_region | INTEGER | 0/1 — flagged in SKILL Phase 2d |
 | warm_path | TEXT | referral/contact note |
 | notes | TEXT | |
+| verification_status | TEXT | feed_verified \| careers_only \| unresolved \| unverified — company-level verification, set via `company verify` (the analog of a job's `verification_tag`) |
+| last_verified | TEXT | ISO date the company's hiring surface was last checked |
+| open_roles | INTEGER | open-role count from the last `ats_probe` (nullable; NULL = unknown) |
+
+> These three columns are added to a **pre-existing** `jobs.db` automatically: `jobsdb.py`'s
+> `connect()` runs an idempotent `_migrate()` (ALTER TABLE guarded by `PRAGMA table_info`),
+> since `init` skips a populated DB. Fresh DBs get them from `schema.sql`.
 
 ### `jobs` — one row per posting (the core table)
 | Column | Type | Notes |
@@ -146,6 +154,28 @@ python jobsdb.py candidate show --slug <slug>
 
 python jobsdb.py category set --candidate <slug> --json <categories.json>
     Replace the candidate's ranked category list (rank/label/keywords).
+
+python jobsdb.py company list
+    List all companies with job counts.
+python jobsdb.py company show <name> | --like <substr>
+    Inspect a company by exact name (full record + verification fields + job count), or
+    search with --like (case-insensitive substring) when you don't know the exact name.
+    Exact-name not-found exits non-zero and suggests --like.
+python jobsdb.py company add --name <name> [--careers-url --ats-platform --ats-slug
+    --multi-region --warm-path --notes]
+    Register a target-list company without needing a job (idempotent; fills blanks, never
+    clobbers). Use for `jobs=0` manual-monitors (completeness rule).
+python jobsdb.py company verify <name> --status feed_verified|careers_only|unresolved|unverified
+    [--date <ISO>] [--open-roles N] [--ats-platform P] [--ats-slug S] [--careers-url U] [--note T]
+    Record a company-level verification outcome — the analog of `mark --verified` for a job.
+    Create-or-update (the probe->verify path often meets a company not yet in the DB);
+    --status is required. Feed/identity fields are sticky (filled, never clobbered); the
+    verification state is overwritten; --note appends a dated line. The companion resolver
+    `python ats_probe.py "<name>"` (stdlib) probes the known ATS feeds and prints the exact
+    `company verify` line to paste.
+python jobsdb.py company rename --from <old> --to <new> [--careers-url --ats-slug]
+    Rename a company in place, or MERGE into the target if the new name already exists
+    (repoints jobs, folds in missing fields, drops the duplicate row).
 
 python jobsdb.py upsert-batch <job_scans/YYYY-MM-DD[_label].json>
     Insert new jobs / update existing ones for one candidate in a single transaction.

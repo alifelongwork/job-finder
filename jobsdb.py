@@ -40,6 +40,18 @@ TERMINAL_STATUS = {"applied", "ignored", "rejected"}
 # Dead / set-aside statuses hidden from default query+export views (opt in with --all).
 # Kept in the DB (history + dedup), just not shown unless asked.
 INACTIVE_STATUS = {"expired", "rejected", "ignored"}
+# Company-level verification (the analog of a job's verification_tag), set via
+# `company verify`. feed_verified = a live ATS JSON feed resolved; careers_only = a
+# careers page exists but no clean feed; unresolved = couldn't resolve (transient/unknown
+# — recheck later); unverified = explicitly checked and no hiring surface found.
+COMPANY_VERIFY_STATUS = {"feed_verified", "careers_only", "unresolved", "unverified"}
+# Columns added to `companies` after the original schema shipped. _migrate() adds any that
+# are missing, so an existing jobs.db upgrades in place (init won't — it skips populated DBs).
+COMPANY_MIGRATIONS = [
+    ("verification_status", "TEXT"),
+    ("last_verified", "TEXT"),
+    ("open_roles", "INTEGER"),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -93,12 +105,28 @@ def parse_comp(raw):
     return int(round(num))
 
 
+def _migrate(conn):
+    """Idempotently add post-1.0 columns to an existing DB. Runs on every connect() (the
+    universal chokepoint) because `init` short-circuits on a populated DB and so never sees
+    it. Steady state is one cheap PRAGMA + set-diff and no write; each ALTER fires once per
+    DB. Column names are hard-coded constants (COMPANY_MIGRATIONS) — never user input."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(companies)")}
+    added = False
+    for name, decl in COMPANY_MIGRATIONS:
+        if name not in cols:
+            conn.execute(f"ALTER TABLE companies ADD COLUMN {name} {decl}")
+            added = True
+    if added:
+        conn.commit()
+
+
 def connect():
     if not os.path.exists(DB_PATH):
         sys.exit("Database not found. Run:  python jobsdb.py init")
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    _migrate(conn)
     return conn
 
 
@@ -977,6 +1005,85 @@ def cmd_company_rename(args):
     print(f"Renamed '{args.from_name}' -> '{args.to_name}'{tail}.")
 
 
+def _company_job_count(conn, company_id):
+    return conn.execute(
+        "SELECT COUNT(*) FROM jobs WHERE company_id = ?", (company_id,)).fetchone()[0]
+
+
+def cmd_company_show(args):
+    """Inspect a company by exact name, or search with --like. The 'does this company
+    exist / what do we know about it' lookup (company names are exact-keyed, so --like is
+    how you find one when you don't know the stored string)."""
+    if not args.name and not args.like:
+        sys.exit("Provide a company NAME or --like <substring>.")
+    if args.name and args.like:
+        sys.exit("Provide either a company NAME or --like <substring>, not both.")
+    conn = connect()
+    if args.like:
+        rows = conn.execute(
+            "SELECT co.id, co.name, co.ats_slug, co.careers_url, co.verification_status, "
+            "COUNT(j.id) AS jobs FROM companies co LEFT JOIN jobs j ON j.company_id = co.id "
+            "WHERE co.name LIKE ? COLLATE NOCASE GROUP BY co.id ORDER BY co.name",
+            (f"%{args.like}%",),
+        ).fetchall()
+        conn.close()
+        if not rows:
+            print("(no matches)")
+            return
+        for r in rows:
+            print(f"  id={r['id']:<4} jobs={r['jobs']:<3} {r['name']}  "
+                  f"[{r['ats_slug'] or '-'}]  <{r['verification_status'] or 'unchecked'}>  "
+                  f"{r['careers_url'] or ''}")
+        return
+    co = _company_by_name(conn, args.name)
+    if not co:
+        conn.close()
+        sys.exit(f"Company '{args.name}' not found. Try:  "
+                 f"python jobsdb.py company show --like <part>")
+    print(f"# {co['name']}  (id={co['id']})")
+    for k in ("careers_url", "ats_platform", "ats_slug", "warm_path", "notes",
+              "verification_status", "open_roles"):
+        if co[k] not in (None, ""):
+            print(f"  {k:<20} {co[k]}")
+    if co["multi_region"]:
+        print(f"  {'multi_region':<20} yes")
+    print(f"  {'last_verified':<20} {verified_age(co['last_verified'])}")
+    print(f"  {'jobs':<20} {_company_job_count(conn, co['id'])}")
+    conn.close()
+
+
+def cmd_company_verify(args):
+    """Record a company-level verification outcome — the analog of `mark --verified` for a
+    job. Create-or-update (the probe->verify path often meets a company not yet in the DB);
+    --status is required so a bare call can't silently create an empty row. Identity/feed
+    fields are sticky (filled via upsert_company, never clobbered); the verification state
+    is always overwritten because it's the freshest truth."""
+    if args.status not in COMPANY_VERIFY_STATUS:
+        sys.exit(f"--status must be one of: {', '.join(sorted(COMPANY_VERIFY_STATUS))}")
+    conn = connect()
+    existed = _company_by_name(conn, args.name) is not None
+    cid = upsert_company(conn, {
+        "company": args.name,
+        "ats_platform": args.ats_platform,
+        "ats_slug": args.ats_slug,
+        "careers_url": args.careers_url,
+    })
+    updates = {"verification_status": args.status, "last_verified": args.date or today()}
+    if args.open_roles is not None:
+        updates["open_roles"] = args.open_roles
+    if args.note:  # append a dated line, like `mark --note`, rather than overwrite
+        row = conn.execute("SELECT notes FROM companies WHERE id=?", (cid,)).fetchone()
+        prev = (row["notes"] + "\n") if row["notes"] else ""
+        updates["notes"] = prev + f"[{today()}] {args.note}"
+    conn.execute(f"UPDATE companies SET {', '.join(f'{k}=?' for k in updates)} WHERE id=?",
+                 [*updates.values(), cid])
+    conn.commit()
+    conn.close()
+    roles = f", open_roles={args.open_roles}" if args.open_roles is not None else ""
+    print(f"{'Updated' if existed else 'Created'} company '{args.name}' (id={cid}): "
+          f"status={args.status}, last_verified={updates['last_verified']}{roles}.")
+
+
 # ---------------------------------------------------------------------------
 # arg parsing
 # ---------------------------------------------------------------------------
@@ -1006,10 +1113,27 @@ def build_parser():
     cset.add_argument("--json", required=True, help="JSON file: [{rank,label,keywords}]")
     cset.set_defaults(func=cmd_category_set)
 
-    co = sub.add_parser("company", help="Manage companies (list / add / rename / merge)")
+    co = sub.add_parser("company",
+                        help="Manage companies (list / show / add / verify / rename / merge)")
     cosub = co.add_subparsers(dest="action", required=True)
     cll = cosub.add_parser("list", help="List companies with job counts")
     cll.set_defaults(func=cmd_company_list)
+    csh = cosub.add_parser("show", help="Inspect a company by name, or search with --like")
+    csh.add_argument("name", nargs="?", help="Exact company name to inspect")
+    csh.add_argument("--like", help="Case-insensitive substring search instead of exact name")
+    csh.set_defaults(func=cmd_company_show)
+    cvf = cosub.add_parser("verify",
+                           help="Record a company verification outcome (analog of job mark --verified)")
+    cvf.add_argument("name")
+    cvf.add_argument("--status", required=True, choices=sorted(COMPANY_VERIFY_STATUS))
+    cvf.add_argument("--date", help="ISO date of the check (default: today)")
+    cvf.add_argument("--open-roles", dest="open_roles", type=int,
+                     help="Open-role count from the probe")
+    cvf.add_argument("--ats-platform", dest="ats_platform")
+    cvf.add_argument("--ats-slug", dest="ats_slug")
+    cvf.add_argument("--careers-url", dest="careers_url")
+    cvf.add_argument("--note", help="Append a dated note line")
+    cvf.set_defaults(func=cmd_company_verify)
     cad = cosub.add_parser("add", help="Register a target-list company (no job needed)")
     cad.add_argument("--name", required=True)
     cad.add_argument("--careers-url", dest="careers_url")

@@ -233,6 +233,45 @@ check("re-add filled ats_slug", ic2["ats_slug"] == "icarusquantum", ic2["ats_slu
 check("re-add without --notes preserved existing note",
       ic2["notes"] == "seed-stage; LinkedIn only", ic2["notes"])
 
+print("== company show ==")
+sh = run("company", "show", "Icarus Quantum").stdout
+check("show exact prints record", "# Icarus Quantum" in sh, sh)
+check("show exact lists last_verified=never (unchecked)", "never" in sh, sh)
+nf = run("company", "show", "Nonesuch Inc", expect_ok=False)
+check("show not-found exits nonzero + suggests --like", "--like" in (nf.stdout + nf.stderr))
+like = run("company", "show", "--like", "car").stdout   # matches 'Icarus'
+check("show --like finds by substring", "Icarus Quantum" in like, like)
+check("show --like no-match prints (no matches)",
+      "(no matches)" in run("company", "show", "--like", "zzzznomatch").stdout)
+
+print("== company verify ==")
+run("company", "verify", "NewCo Verify", "--status", "feed_verified", "--open-roles", "5")
+nv = db().execute("SELECT * FROM companies WHERE name='NewCo Verify'").fetchone()
+check("verify creates company when absent", nv is not None)
+check("verify sets status", nv and nv["verification_status"] == "feed_verified")
+check("verify sets open_roles", nv and nv["open_roles"] == 5, nv["open_roles"] if nv else None)
+check("verify defaults last_verified to an ISO date",
+      bool(nv) and nv["last_verified"] and len(nv["last_verified"]) == 10
+      and nv["last_verified"].count("-") == 2, nv["last_verified"] if nv else None)
+check("verify requires --status",
+      run("company", "verify", "NewCo Verify", expect_ok=False).returncode != 0)
+check("verify rejects bogus status",
+      run("company", "verify", "NewCo Verify", "--status", "bogus", expect_ok=False).returncode != 0)
+# update path: status overwritten, no duplicate row
+run("company", "verify", "NewCo Verify", "--status", "careers_only", "--open-roles", "0")
+n_nv = db().execute("SELECT COUNT(*) FROM companies WHERE name='NewCo Verify'").fetchone()[0]
+check("verify update does not duplicate", n_nv == 1, n_nv)
+nv2 = db().execute("SELECT * FROM companies WHERE name='NewCo Verify'").fetchone()
+check("verify overwrites status", nv2["verification_status"] == "careers_only", nv2["verification_status"])
+# sticky ats fields + appended notes
+run("company", "verify", "Sticky Co", "--status", "feed_verified", "--ats-slug", "stickyco",
+    "--note", "first note")
+run("company", "verify", "Sticky Co", "--status", "feed_verified", "--note", "second note")
+sc = db().execute("SELECT * FROM companies WHERE name='Sticky Co'").fetchone()
+check("verify keeps ats_slug sticky across re-verify", sc["ats_slug"] == "stickyco", sc["ats_slug"])
+check("verify appends notes (not overwrite)",
+      sc["notes"] and "first note" in sc["notes"] and "second note" in sc["notes"], sc["notes"])
+
 print("== query filters & sort ==")
 r = run("query", "--candidate", "tester", "--format", "json")
 jobs = json.loads(r.stdout)
@@ -383,6 +422,66 @@ for p in (csv_path, md_path, xlsx_path, expbase + ".docx", expbase + "_t1.csv",
           expbase + "_def.csv", expbase + "_allx.csv"):
     if os.path.exists(p):
         os.remove(p)
+
+print("== schema migration (companies verification columns) ==")
+NEW_COLS = {"verification_status", "last_verified", "open_roles"}
+fresh_cols = {r["name"] for r in db().execute("PRAGMA table_info(companies)")}
+check("fresh DB (init) has new company columns", NEW_COLS <= fresh_cols, fresh_cols)
+# Pre-existing DB on the OLD schema must upgrade in place, non-destructively. Build a DB
+# with the original 8-column companies table + a seeded row, then run a command that goes
+# through connect() (-> _migrate) and confirm the columns appear AND the row survives.
+TMPDB2 = os.path.join(tempfile.gettempdir(), "jobsdb_migrate_test.db")
+if os.path.exists(TMPDB2):
+    os.remove(TMPDB2)
+_c = sqlite3.connect(TMPDB2)
+_c.executescript("""
+    CREATE TABLE companies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL,
+        careers_url TEXT, ats_platform TEXT, ats_slug TEXT,
+        multi_region INTEGER NOT NULL DEFAULT 0, warm_path TEXT, notes TEXT);
+    INSERT INTO companies (name, careers_url) VALUES ('OldRow Co', 'https://oldrow.example');
+""")
+_c.commit()
+_c.close()
+_oc = sqlite3.connect(TMPDB2)
+old_cols = {r[1] for r in _oc.execute("PRAGMA table_info(companies)")}
+_oc.close()  # close before remove() — Windows locks open sqlite files (see env gotchas)
+check("pre-existing DB starts WITHOUT new columns", not (NEW_COLS & old_cols), old_cols)
+# `company verify` on the seeded row touches only the companies table (no jobs needed).
+subprocess.run([sys.executable, JOBSDB, "company", "verify", "OldRow Co",
+                "--status", "feed_verified", "--open-roles", "9"],
+               env={**os.environ, "JOBSDB_PATH": TMPDB2, "PYTHONIOENCODING": "utf-8"},
+               capture_output=True, text=True, encoding="utf-8", check=True)
+_m = sqlite3.connect(TMPDB2); _m.row_factory = sqlite3.Row
+mig_cols = {r["name"] for r in _m.execute("PRAGMA table_info(companies)")}
+old = _m.execute("SELECT * FROM companies WHERE name='OldRow Co'").fetchone()
+_m.close()
+check("migration added new columns to existing DB", NEW_COLS <= mig_cols, mig_cols)
+check("migration preserved pre-existing row data",
+      old and old["careers_url"] == "https://oldrow.example", old["careers_url"] if old else None)
+check("verify worked on the just-migrated DB",
+      old and old["verification_status"] == "feed_verified" and old["open_roles"] == 9)
+try:
+    if os.path.exists(TMPDB2):
+        os.remove(TMPDB2)
+except OSError:
+    pass  # temp file; OS will reclaim it
+
+print("== ats_probe.py (offline) ==")
+import ats_probe
+check("candidate_slugs derives + strips corp suffix",
+      ats_probe.candidate_slugs("Acme Robotics, Inc.") == ["acmerobotics", "acme-robotics", "acme"],
+      ats_probe.candidate_slugs("Acme Robotics, Inc."))
+check("candidate_slugs single token", ats_probe.candidate_slugs("Stripe") == ["stripe"])
+gh = ats_probe.parse_greenhouse({"jobs": [
+    {"title": "SRE", "location": {"name": "Remote"}, "absolute_url": "http://x"}]})
+check("parse_greenhouse normalizes a sample", gh["count"] == 1 and gh["samples"][0]["title"] == "SRE", gh)
+lv = ats_probe.parse_lever([{"text": "Eng", "categories": {"location": "Denver, CO"}, "hostedUrl": "u"}])
+check("parse_lever normalizes a sample", lv["count"] == 1 and lv["samples"][0]["location"] == "Denver, CO", lv)
+check("parse_* tolerate empty/garbage", ats_probe.parse_ashby({})["count"] == 0
+      and ats_probe.parse_workable("nonsense")["count"] == 0)
+err = ats_probe._request("http://10.255.255.1:9/nope", 2)  # non-routable: times out, must not raise
+check("ats_probe._request returns error triple without raising", err[0] == "error", err)
 
 # ---------------------------------------------------------------------------
 print(f"\n{'='*40}\n{passed} passed, {failed} failed")

@@ -29,14 +29,19 @@ CREATE TABLE IF NOT EXISTS candidate_categories (
 );
 
 CREATE TABLE IF NOT EXISTS companies (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    name         TEXT UNIQUE NOT NULL,
-    careers_url  TEXT,
-    ats_platform TEXT,                       -- greenhouse|lever|ashby|workable|jobvite|smartrecruiters|other
-    ats_slug     TEXT,
-    multi_region INTEGER NOT NULL DEFAULT 0, -- boolean 0/1
-    warm_path    TEXT,
-    notes        TEXT
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    name                TEXT UNIQUE NOT NULL,
+    careers_url         TEXT,
+    ats_platform        TEXT,                -- greenhouse|lever|ashby|workable|jobvite|smartrecruiters|other
+    ats_slug            TEXT,
+    multi_region        INTEGER NOT NULL DEFAULT 0, -- boolean 0/1
+    warm_path           TEXT,
+    notes               TEXT,
+    -- Company-level verification (set via `company verify`; jobsdb.py _migrate() adds these
+    -- to pre-existing DBs). See COMPANY_VERIFY_STATUS in jobsdb.py.
+    verification_status TEXT,                -- feed_verified|careers_only|unresolved|unverified
+    last_verified       TEXT,                -- ISO date the company's hiring surface was last checked
+    open_roles          INTEGER              -- open-role count from the last probe (NULL = unknown)
 );
 
 CREATE TABLE IF NOT EXISTS jobs (
