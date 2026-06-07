@@ -6,7 +6,7 @@ database (so nothing is lost or duplicated between searches), and tailors resume
 letters for the ones you want. It works for **any field** — software, IT/sysadmin, healthcare,
 finance, trades — because the search adapts to whoever's resume it's given.
 
-> **This is a template.** Clone it (or click *Use this template* on GitHub), open the folder
+> **This is a template.** Use it to create your own copy (see Setup below), open the folder
 > in Claude Code, and point it at your resume. Your data (`jobs.db`, your resume, generated
 > docs) stays local and is gitignored — nothing personal is committed or sent anywhere.
 
@@ -22,19 +22,122 @@ Three principles drive quality: **start from companies, not job boards**; **the 
 careers page/ATS is the only authoritative source**; and **a live posting in the wrong
 location is not a match** (location is a hard gate, never a Tier 1/2).
 
-## Quick start
+## Do I need Claude Code? (what's automated vs. what runs standalone)
 
-1. Install **Claude Code** and **Python 3** (3.8+; standard library only — no pip installs
-   required for the core. `python-docx` is optional, only for Word exports).
-2. Open this folder in Claude Code and say:
-   > *"Read Project_Instructions.md and be my job search copilot. Here's my resume: `<path>`.
-   > Please set me up and run a search."*
-3. Claude reads your resume, runs a short onboarding questionnaire (work authorization,
-   location, comp, target categories — the things resumes don't say), saves your brief to the
-   DB, builds + verifies a target-company list, searches, and stores the results.
+The **searching and judgment** are the product, and those need an LLM agent — **Claude Code is
+the intended driver.** The database and helper scripts, however, are plain Python and run on
+their own:
 
-See **[HOW_TO_USE.md](HOW_TO_USE.md)** for the full guide, and **[examples/](examples/)** for
-two worked candidate profiles (an early-career SWE and an experienced IT/sysadmin).
+| Part | Needs Claude Code? | Notes |
+|------|--------------------|-------|
+| Discovering companies for your profile, multi-source search, deciding fit / location / tier, writing tailored resumes & cover letters | **Yes** | This is the agent's work. The `*.md` files are instructions *for the LLM*, not runnable code. |
+| `jobsdb.py` — store / query / dedup / export your pipeline, `company verify`, stats | **No** | Pure Python 3 (stdlib `sqlite3`), **zero network**. Works fully offline. |
+| `ats_probe.py` — resolve a company's ATS feed & list its open roles | **No** | Stdlib `urllib`, **no API keys**. Real web fetch without Claude. |
+| `google_careers.py` — read Google's careers board | **No** | Stdlib `urllib`, no keys. |
+
+So: **Claude Code does the open-ended *searching* and the *reasoning*; the CLI/helpers do the
+deterministic fetching and all the data management.** A person could run the CLI and helper
+scripts by hand (and even drive the whole thing with a different agentic-LLM tool that has a
+shell + web access — nothing here is Claude-Code-proprietary), but the turnkey experience
+assumes Claude Code. There are **no API keys anywhere** — the ATS feeds and Google careers are
+public endpoints.
+
+---
+
+## Setup — step by step
+
+### Step 1 — Get your own copy of this project
+
+- **On GitHub (recommended):** click **`Use this template` → Create a new repository**, then
+  clone it:
+  ```bash
+  git clone https://github.com/<your-username>/<your-repo>.git
+  cd <your-repo>
+  ```
+  *(If the owner hasn't enabled the template button, use **Code → Download ZIP**, or
+  `git clone` the repo directly, then `cd` into it.)*
+- Everything personal stays out of git automatically (`.gitignore` excludes `jobs.db`, your
+  resume, `candidates/`, `exports/`, `job_scans/`).
+
+### Step 2 — Install Python 3 (3.8 or newer)
+
+Check whether you already have it:
+```bash
+python --version        # or:  python3 --version
+```
+If not, install from **https://www.python.org/downloads/** (or your OS package manager). No
+third-party packages are required for the core — it's standard library only. *(Optional:
+`pip install python-docx` only if you want Microsoft Word `.docx` report exports; CSV, Markdown,
+and Excel `.xlsx` exports work without it.)*
+
+### Step 3 — Install Claude Code
+
+> **Account note:** Claude Code requires a paid Claude plan (**Pro, Max, Team, or Enterprise**)
+> or an **Anthropic Console (API) account** — the free Claude.ai tier does not include it. (It
+> can also run via AWS Bedrock / Google Vertex AI / Microsoft Foundry.)
+
+Install with the official one-line installer for your OS:
+
+- **macOS / Linux / WSL:**
+  ```bash
+  curl -fsSL https://claude.ai/install.sh | bash
+  ```
+- **Windows (PowerShell):**
+  ```powershell
+  irm https://claude.ai/install.ps1 | iex
+  ```
+- **Any platform, via npm** (needs **Node.js 18+**):
+  ```bash
+  npm install -g @anthropic-ai/claude-code
+  ```
+- **Homebrew (macOS/Linux):** `brew install --cask claude-code` · **WinGet (Windows):**
+  `winget install Anthropic.ClaudeCode`
+
+*(On Windows, installing **Git for Windows** is optional but recommended — it lets Claude Code
+use Bash; otherwise it uses PowerShell.)*
+
+**Prefer not to use the terminal?** Claude Code also ships as a **desktop app** (macOS/Windows,
+browse to your folder in the UI) and a **web app** at **https://claude.ai/code**. The desktop
+app and IDE extensions (VS Code, JetBrains) can open this local folder; the CLI below is the
+simplest path.
+
+Official docs: **install/setup** https://code.claude.com/docs/en/setup · **quickstart**
+https://code.claude.com/docs/en/quickstart
+
+### Step 4 — Start Claude Code in this folder
+
+From the project folder you cloned in Step 1:
+```bash
+cd <your-repo>
+claude
+```
+The first run opens a browser to log in to your Claude account. Running `claude` **inside this
+folder** is what lets it read the copilot's instructions (`CLAUDE.md` loads automatically).
+
+### Step 5 — Kick off your search
+
+Paste this as your first message (point it at your résumé file — PDF or `.docx`):
+
+> **"Read Project_Instructions.md and be my job search copilot. Here's my resume:
+> `path/to/your_resume.pdf`. Please set me up and run a search."**
+
+Claude will then:
+1. Read your résumé and pull out your background.
+2. Ask a few onboarding questions resumes don't answer (work authorization, location/remote,
+   comp floor, target roles).
+3. Save your profile to the local database.
+4. Build + verify a target-company list, search their live postings, and store the tiered
+   results.
+
+### From then on
+
+Each new session, just open the folder and run `claude`, then say *"Read Project_Instructions.md
+and be my job copilot"* — it already remembers you from the database. See
+**[HOW_TO_USE.md](HOW_TO_USE.md)** for the day-to-day loop (reviewing roles, tailoring a resume,
+marking what you applied to), and **[examples/](examples/)** for two worked candidate profiles
+(an early-career software engineer and an experienced IT/sysadmin).
+
+---
 
 ## One database per person
 
@@ -50,6 +153,18 @@ Each person runs **their own** `jobs.db`. Two ways to share this with friends:
   export JOBSDB_PATH=/path/to/my_jobs.db
   ```
   then `python jobsdb.py init`. (Claude can do this for them.)
+
+## Using the tools by hand (no Claude required)
+
+These run anytime with just Python — useful for inspecting your pipeline or checking a company:
+```bash
+python jobsdb.py stats --candidate <you>            # pipeline summary
+python jobsdb.py query --candidate <you> --tier 1   # your Tier-1 roles
+python jobsdb.py company show --like acme           # is a company tracked?
+python ats_probe.py "Acme Robotics"                 # find a company's live ATS feed
+python test_jobsdb.py                               # self-test (throwaway DB)
+```
+See **[database.md](database.md)** for the full CLI.
 
 ## What's in here
 
@@ -71,8 +186,9 @@ Each person runs **their own** `jobs.db`. Two ways to share this with friends:
 
 ## Notes
 
-- **Nothing here phones home.** The database is one local file; searching uses the web (that's
-  how it finds jobs), but your résumé and pipeline stay on your machine. `.gitignore` keeps
-  `jobs.db`, resumes, generated docs, and scan/export folders out of git.
-- **Tip:** on GitHub, turn on *Settings → Template repository* so others can click *Use this
-  template* instead of cloning.
+- **Nothing here phones home.** The database is one local file. The *agent* uses the web to
+  find and verify jobs (that's the searching), and the helper scripts fetch public ATS feeds —
+  but your résumé and pipeline stay on your machine. `.gitignore` keeps `jobs.db`, resumes,
+  generated docs, and scan/export folders out of git.
+- **For repo owners:** turn on *Settings → Template repository* on GitHub so others can click
+  *Use this template* instead of cloning.
