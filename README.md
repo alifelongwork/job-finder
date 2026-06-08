@@ -1,5 +1,8 @@
 # Job Search Copilot
 
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support-FF5E5B)](https://ko-fi.com/alifelongwork)
+
+
 A personal, **resume-keyed** job-hunting copilot you run inside [Claude Code](https://claude.com/claude-code).
 It finds **real, verified, location-matched** job openings, keeps them in a local SQLite
 database (so nothing is lost or duplicated between searches), and tailors resumes and cover
