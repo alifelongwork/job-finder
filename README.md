@@ -4,7 +4,7 @@ A personal, **resume-keyed** job-hunting copilot you run inside [Claude Code](ht
 It finds **real, verified, location-matched** job openings, keeps them in a local SQLite
 database (so nothing is lost or duplicated between searches), and tailors resumes and cover
 letters for the ones you want. It works for **any field** — software, IT/sysadmin, healthcare,
-finance, trades — because the search adapts to whoever's resume it's given.
+finance, trades — because the search adapts to whoever's resume it's given. This is meant to drastically simplify the job searching process.
 
 > **This is a template.** Use it to create your own copy (see Setup below), open the folder
 > in Claude Code, and point it at your resume. Your data (`jobs.db`, your resume, generated
