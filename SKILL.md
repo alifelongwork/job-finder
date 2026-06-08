@@ -337,6 +337,22 @@ Attempt in this order:
    Helper: `python google_careers.py "<query>" --state <ST> [--json]` does the fetch+parse and
    tags each role's degree level (so over-leveled roles are obvious at a glance).
 
+   **Amazon (custom public API):** no ATS feed, but `https://www.amazon.jobs/en/search.json`
+   is a readable JSON endpoint. Gotchas (2026-06-08): it only honors `base_query` + `country`
+   server-side — `loc_query`/state params are IGNORED (request echo shows `location:null`), so
+   **paginate via `offset` and filter by state CLIENT-SIDE**. The per-job `state` field is the
+   **2-letter code** (`CO`, not `Colorado`) — filtering on the full name silently returns 0.
+   Helper: `python amazon_jobs.py "<query>" --state CO [--json --max-pages N]` (paginates +
+   filters + tags level/intern/new-grad). Present in feed = live (satisfies 4c/4d).
+
+   **Microsoft (custom API — BLOCKED from stdlib here):** the real endpoint is
+   `https://gcsservices.careers.microsoft.com/search/api/v1/search?q=<kw>&lc=<loc>&pg=1&pgSz=20`
+   (results under `operationResult.result.jobs[]`, apply URL `jobs.careers.microsoft.com/global/en/job/<jobId>`).
+   But that host is behind a WAF that serves an **invalid/empty TLS cert** to non-browser clients
+   (`SSL: CERTIFICATE_VERIFY_FAILED`, empty SAN) — the UI hosts (`jobs.careers.microsoft.com`) TLS
+   fine but are JS-rendered. So there is **no clean stdlib puller from this environment**; Microsoft
+   stays a `careers_only` monitor. Revisit from a browser-context fetch or if the WAF behavior changes.
+
 **Important for multi-region companies (flagged in Phase 2d):** the same role title and
 JD shell often exists as separate ATS IDs per region. When pulling a multi-region
 company's roles, capture every ATS ID for that title and check the location field on
