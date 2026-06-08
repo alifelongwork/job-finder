@@ -271,7 +271,7 @@ Attempt in this order:
    **no `--ats-platform` flag** — if the platform itself changed (e.g. lever→greenhouse),
    follow with `jobsdb.py company add --name "<new>" --ats-platform <platform>` (idempotent
    upsert; updates only the supplied non-empty field, never clobbers).
-   (Worked examples of real drifts/acquisitions: `examples/austin-quantum-field-notes.md`.)
+   (Worked examples of real drifts/acquisitions: `examples/quantum-field-notes.md`.)
 
    **Workday (large defense/space/enterprise — Maxar, Trimble, Sierra Space, Lockheed,
    NCAR/UCAR, etc.):** Workday boards are JS-rendered with NO Greenhouse-style GET feed,
@@ -314,7 +314,7 @@ Attempt in this order:
    roles (e.g. NIST), which do post on **USAJOBS.gov** (citizenship gate, slow). Many
    defense/space lab roles carry a clearance/citizenship gate — capture it as a screening risk.
    (Worked CO-lab examples — NLR/NREL, NCAR/UCAR, SwRI, LASP — are in
-   `examples/austin-quantum-field-notes.md`.)
+   `examples/quantum-field-notes.md`.)
 
    **Big-tech embedded-data boards (Google, etc.):** some large employers run no public
    ATS feed at all — Google's careers site is JS-rendered and its legacy JSON API

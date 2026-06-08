@@ -16,7 +16,7 @@ document as a substitute for storing the job.
 | Column | Type | Notes |
 |--------|------|-------|
 | id | INTEGER PK | |
-| slug | TEXT UNIQUE | e.g. `austin_long`; used in folder paths |
+| slug | TEXT UNIQUE | e.g. `example_candidate`; used in folder paths |
 | name | TEXT | |
 | email | TEXT | |
 | location_constraint | TEXT | e.g. "Colorado-based or fully remote only, no relocation" |
@@ -242,7 +242,7 @@ each scan), then pass it to `upsert-batch`.
 
 ```json
 {
-  "candidate": "austin_long",
+  "candidate": "example_candidate",
   "run_date": "2026-05-31",
   "jobs": [
     {

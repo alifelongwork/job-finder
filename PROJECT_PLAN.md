@@ -6,7 +6,7 @@ that part can't be a plain script), but results are stored, deduplicated, status
 and re-verifiable instead of thrown away each run.
 
 **Environment:** Claude Code (CLI) on Windows. Python 3 (stdlib `sqlite3`, no external deps
-required for the core). Working dir: `C:\Users\Austin\claude_jobs`.
+required for the core). Working dir: `C:\Users\<you>\claude_jobs` (any path works).
 
 ---
 
@@ -40,12 +40,12 @@ registers/updates that candidate and uses their constraints + ranked category pr
 ## File layout (target)
 
 ```
-C:\Users\Austin\claude_jobs\
+C:\Users\<you>\claude_jobs\
 ├── jobsdb.py              # CLI tool (built in Step 1–2)
 ├── schema.sql             # DB structure
 ├── jobs.db                # SQLite database (created by `init`; not hand-edited)
 ├── candidates/
-│   └── <slug>/            # e.g. austin_long
+│   └── <slug>/            # e.g. example_candidate
 │       ├── resume_base.docx
 │       ├── resumes/       # tailored .docx
 │       └── cover_letters/ # cover letter .docx
@@ -84,7 +84,7 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   agg-fallback keys), upsert preserves rows (7 not 10), new→active revival, metadata
   refresh on re-run, contacts persistence, category-priority query, Phase-5 sort order,
   search_runs logging
-- ☑ Registered real candidate `austin_long` (from resume) + 3 ranked categories; test job
+- ☑ Registered the candidate `example_candidate` (from resume) + 3 ranked categories; test job
   data cleared, candidate/categories retained for the live run
 
 ### Step 2 — Re-verification & progress tracking
@@ -114,7 +114,7 @@ Legend: ☐ todo · ◐ in progress · ☑ done
   upsert-batch → stats → query --status new) against the DB — runs clean end-to-end
 
 ### Step 4 — Live end-to-end  ☑
-- ☑ Austin registered (resume) + 3 quantum-priority categories (done in Step 1)
+- ☑ Candidate registered (resume) + 3 quantum-priority categories (done in Step 1)
 - ☑ Ran a real rank-1 quantum search (CO + remote US). Pulled live roles from
   authoritative ATS APIs: Quantinuum (EU Lever), IonQ (Greenhouse), Infleqtion (Workable
   mirror). Persisted 8 real jobs — 7 location-matched, 1 wrong-location (Infleqtion UK

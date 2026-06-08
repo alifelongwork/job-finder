@@ -43,7 +43,7 @@ and targeting.
    - Remote / hybrid / onsite preference?
    - Willing to relocate? If so, where?
    - *Why:* this is the mandatory Phase 4c gate. Capture it as one rich sentence.
-   - *Example:* `"Arvada, CO — Colorado-based or fully remote only, no relocation"`.
+   - *Example:* `"Denver metro, CO — Colorado-based or fully remote only, no relocation"`.
 
 ---
 

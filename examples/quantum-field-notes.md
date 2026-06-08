@@ -1,7 +1,7 @@
 # Field Notes — Colorado Quantum / Deep-Tech (worked example)
 
 These are **real, dated findings** accumulated while running this copilot for one candidate
-(Austin Long: early-career SWE/ML, Colorado-or-remote, quantum-first). They are kept as a
+(an early-career SWE/ML engineer, Colorado-or-remote, quantum-first). They are kept as a
 **worked example** of the kind of domain knowledge a search run accumulates — not as part of
 the general method. The reusable *techniques* live in `SKILL.md` (the "ATS Cookbook" and
 Phase 3a); this file is the *domain-specific residue* of applying them to one field.

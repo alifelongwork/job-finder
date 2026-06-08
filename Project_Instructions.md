@@ -48,7 +48,7 @@ State the stored brief back for confirmation rather than re-asking from scratch 
 > [$floor] floor. Category priority: (1) ..., (2) ..., (3) .... Confirm this is still accurate?"
 
 Two real shapes, for illustration (full versions in `examples/`):
-> — early-career SWE: "Arvada, CO; CO-or-remote, no relocation; US Citizen, no clearance;
+> — early-career SWE: "Denver metro, CO; CO-or-remote, no relocation; US Citizen, no clearance;
 > $80K+; (1) quantum software, (2) quantum-adjacent, (3) general SWE/AI."
 > — experienced IT admin: "Denver metro, hybrid-or-remote; US Citizen; $85K+; (1) systems/
 > infrastructure admin, (2) cloud ops, (3) IT lead."
