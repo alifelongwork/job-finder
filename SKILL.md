@@ -228,6 +228,7 @@ Attempt in this order:
    Freshteam:  careers.[company].com/jobs (readable HTML)  ·  Paycor: recruitingbypaycor.com career site (readable)
    Rippling:   https://api.rippling.com/platform/api/ats/v1/board/[slug]/jobs  (JSON list; UI at ats.rippling.com/[slug]/jobs)
                (verified 2026-06-04; several companies have migrated here off Greenhouse/Lever)
+               (2026-06-08: each role's location is workLocation.label — NOT city/state/country fields; id=uuid)
    Comeet:     https://www.comeet.com/jobs/[slug]/[token]  (HTML; empty boards render a "no open positions" template — a 404 on a
                search-indexed job means the req closed, not a bad slug). Verified 2026-06-04.
    Jobvite:    https://jobs.jobvite.com/[slug]/jobs  (readable). Verified 2026-06-04: Uplight, Exabeam/LogRhythm.
@@ -287,6 +288,15 @@ Attempt in this order:
    Detail (GET): /wday/cxs/[tenant]/[careerSite]/job/[externalPath]
                  -> full posting incl. exact location + datePosted (use to confirm one role live)
    ```
+   **(2026-06-08 sweep corrections — these silently corrupt a sweep if missed):**
+   - The human-facing posting URL is `[host]/[careerSite][externalPath]` — `externalPath` itself
+     OMITS the careersite segment, so `host+externalPath` 404s. Always insert `/[careerSite]`.
+   - The CXS `title` field sometimes DROPS the seniority that is present in the `externalPath`
+     slug (e.g. title "Software Development Engineer" but path `_Senior-Software-Development-...`).
+     Run the over-level filter against the path slug too, or a Senior role slips through as entry.
+   - **Workable dedup keys are lowercased** (`workable:{slug}:{shortcode}.lower()`) — the widget API
+     returns shortcodes UPPERCASE; forgetting `.lower()` makes every existing role read as
+     "expired" and re-inserts a duplicate. (Greenhouse numeric ids / Lever UUIDs are case-stable.)
    The GET job-detail endpoint is the reliable way to confirm a specific Workday role's
    location and live status for Phase 4c. Some tenants expose multiple career sites (e.g.
    Maxar's public board 403'd but its `Cleared_Opportunities` site verified) — try the
