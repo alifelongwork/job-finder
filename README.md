@@ -11,7 +11,7 @@ finance, trades because the search adapts to whoever's resume it's given. This i
 
 > **This is a template.** Use it to create your own copy (see Setup below), open the folder
 > in Claude Code, and point it at your resume. Your data (`jobs.db`, your resume, generated
-> docs) stays local and is gitignored — nothing personal is committed or sent anywhere.
+> docs) stays local and is gitignored so nothing personal is committed or sent anywhere.
 
 ## What it does
 
