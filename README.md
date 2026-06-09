@@ -119,7 +119,7 @@ folder** is what lets it read the copilot's instructions (`CLAUDE.md` loads auto
 
 ### Step 5 - Kick off your search
 
-Paste this as your first message (point it at your résumé file — PDF or `.docx`):
+Paste this as your first message (point it at your résumé file either PDF or `.docx`):
 
 > **"Read Project_Instructions.md and be my job search copilot. Here's my resume:
 > `path/to/your_resume.pdf`. Please set me up and run a search."**
@@ -135,7 +135,7 @@ Claude will then:
 ### From then on
 
 Each new session, just open the folder and run `claude`, then say *"Read Project_Instructions.md
-and be my job copilot"* — it already remembers you from the database. See
+and be my job copilot"*, it already remembers you from the database. See
 **[HOW_TO_USE.md](HOW_TO_USE.md)** for the day-to-day loop (reviewing roles, tailoring a resume,
 marking what you applied to), and **[examples/](examples/)** for two worked candidate profiles
 (an early-career software engineer and an experienced IT/sysadmin).
@@ -146,9 +146,9 @@ marking what you applied to), and **[examples/](examples/)** for two worked cand
 
 Each person runs **their own** `jobs.db`. Two ways to share this with friends:
 
-- **Separate folders** — each person gets their own copy of the template; their data lives in
+- **Separate folders** so each person gets their own copy of the template; their data lives in
   their own `jobs.db`.
-- **One folder, separate DBs** — point each person at their own file:
+- **One folder, separate DBs** and point each person at their own file:
   ```
   # Windows PowerShell
   $env:JOBSDB_PATH = "C:\path\to\my_jobs.db"
