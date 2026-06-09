@@ -6,8 +6,8 @@
 A personal, **resume-keyed** job-hunting copilot you run inside [Claude Code](https://claude.com/claude-code).
 It finds **real, verified, location-matched** job openings, keeps them in a local SQLite
 database (so nothing is lost or duplicated between searches), and tailors resumes and cover
-letters for the ones you want. It works for **any field** — software, IT/sysadmin, healthcare,
-finance, trades — because the search adapts to whoever's resume it's given. This is meant to drastically simplify the job searching process.
+letters for the ones you want. It works for **any field** such as software, IT/sysadmin, healthcare,
+finance, trades because the search adapts to whoever's resume it's given. This is meant to drastically simplify the job searching process.
 
 > **This is a template.** Use it to create your own copy (see Setup below), open the folder
 > in Claude Code, and point it at your resume. Your data (`jobs.db`, your resume, generated
@@ -27,7 +27,7 @@ location is not a match** (location is a hard gate, never a Tier 1/2).
 
 ## Do I need Claude Code? (what's automated vs. what runs standalone)
 
-The **searching and judgment** are the product, and those need an LLM agent — **Claude Code is
+The **searching and judgment** are the product, and those need an LLM agent where **Claude Code is
 the intended driver.** The database and helper scripts, however, are plain Python and run on
 their own:
 
@@ -41,8 +41,8 @@ their own:
 So: **Claude Code does the open-ended *searching* and the *reasoning*; the CLI/helpers do the
 deterministic fetching and all the data management.** A person could run the CLI and helper
 scripts by hand (and even drive the whole thing with a different agentic-LLM tool that has a
-shell + web access — nothing here is Claude-Code-proprietary), but the turnkey experience
-assumes Claude Code. There are **no API keys anywhere** — the ATS feeds and Google careers are
+shell + web access, nothing here is Claude-Code-proprietary), but the turnkey experience
+assumes Claude Code. There are **no API keys anywhere**, the ATS feeds and Google careers are
 public endpoints.
 
 ---
@@ -76,7 +76,7 @@ and Excel `.xlsx` exports work without it.)*
 ### Step 3 — Install Claude Code
 
 > **Account note:** Claude Code requires a paid Claude plan (**Pro, Max, Team, or Enterprise**)
-> or an **Anthropic Console (API) account** — the free Claude.ai tier does not include it. (It
+> or an **Anthropic Console (API) account**, the free Claude.ai tier does not include it. (It
 > can also run via AWS Bedrock / Google Vertex AI / Microsoft Foundry.)
 
 Install with the official one-line installer for your OS:
@@ -96,7 +96,7 @@ Install with the official one-line installer for your OS:
 - **Homebrew (macOS/Linux):** `brew install --cask claude-code` · **WinGet (Windows):**
   `winget install Anthropic.ClaudeCode`
 
-*(On Windows, installing **Git for Windows** is optional but recommended — it lets Claude Code
+*(On Windows, installing **Git for Windows** is optional but recommended as it lets Claude Code
 use Bash; otherwise it uses PowerShell.)*
 
 **Prefer not to use the terminal?** Claude Code also ships as a **desktop app** (macOS/Windows,
@@ -159,7 +159,7 @@ Each person runs **their own** `jobs.db`. Two ways to share this with friends:
 
 ## Using the tools by hand (no Claude required)
 
-These run anytime with just Python — useful for inspecting your pipeline or checking a company:
+These run anytime with just Python making it useful for inspecting your pipeline or checking a company:
 ```bash
 python jobsdb.py stats --candidate <you>            # pipeline summary
 python jobsdb.py query --candidate <you> --tier 1   # your Tier-1 roles
