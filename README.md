@@ -34,9 +34,9 @@ their own:
 | Part | Needs Claude Code? | Notes |
 |------|--------------------|-------|
 | Discovering companies for your profile, multi-source search, deciding fit / location / tier, writing tailored resumes & cover letters | **Yes** | This is the agent's work. The `*.md` files are instructions *for the LLM*, not runnable code. |
-| `jobsdb.py` — store / query / dedup / export your pipeline, `company verify`, stats | **No** | Pure Python 3 (stdlib `sqlite3`), **zero network**. Works fully offline. |
-| `ats_probe.py` — resolve a company's ATS feed & list its open roles | **No** | Stdlib `urllib`, **no API keys**. Real web fetch without Claude. |
-| `google_careers.py` — read Google's careers board | **No** | Stdlib `urllib`, no keys. |
+| `jobsdb.py` - store / query / dedup / export your pipeline, `company verify`, stats | **No** | Pure Python 3 (stdlib `sqlite3`), **zero network**. Works fully offline. |
+| `ats_probe.py` - resolve a company's ATS feed & list its open roles | **No** | Stdlib `urllib`, **no API keys**. Real web fetch without Claude. |
+| `google_careers.py` - read Google's careers board | **No** | Stdlib `urllib`, no keys. |
 
 So: **Claude Code does the open-ended *searching* and the *reasoning*; the CLI/helpers do the
 deterministic fetching and all the data management.** A person could run the CLI and helper
