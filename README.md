@@ -181,7 +181,7 @@ See **[database.md](database.md)** for the full CLI.
 | `domain-boards.md` | Job-board library across many fields (IT, healthcare, finance, SWE, …) |
 | `linkedin-outreach.md` | Contact search for Tier 1 roles |
 | `database.md` | The DB schema + `jobsdb.py` CLI contract |
-| `jobsdb.py` | The pipeline CLI (stdlib only) — single source of truth for the job list |
+| `jobsdb.py` | The pipeline CLI (stdlib only), single source of truth for the job list |
 | `ats_probe.py` | Resolves a company's ATS hiring feed (company-level verification helper) |
 | `google_careers.py` | Reads Google's embedded-data careers board |
 | `test_jobsdb.py` | Regression suite (`python test_jobsdb.py`, throwaway DB) |
