@@ -47,9 +47,9 @@ public endpoints.
 
 ---
 
-## Setup — step by step
+## Setup - step by step
 
-### Step 1 — Get your own copy of this project
+### Step 1 - Get your own copy of this project
 
 - **On GitHub (recommended):** click **`Use this template` → Create a new repository**, then
   clone it:
@@ -62,7 +62,7 @@ public endpoints.
 - Everything personal stays out of git automatically (`.gitignore` excludes `jobs.db`, your
   resume, `candidates/`, `exports/`, `job_scans/`).
 
-### Step 2 — Install Python 3 (3.8 or newer)
+### Step 2 - Install Python 3 (3.8 or newer)
 
 Check whether you already have it:
 ```bash
@@ -73,7 +73,7 @@ third-party packages are required for the core — it's standard library only. *
 `pip install python-docx` only if you want Microsoft Word `.docx` report exports; CSV, Markdown,
 and Excel `.xlsx` exports work without it.)*
 
-### Step 3 — Install Claude Code
+### Step 3 - Install Claude Code
 
 > **Account note:** Claude Code requires a paid Claude plan (**Pro, Max, Team, or Enterprise**)
 > or an **Anthropic Console (API) account**, the free Claude.ai tier does not include it. (It
@@ -107,7 +107,7 @@ simplest path.
 Official docs: **install/setup** https://code.claude.com/docs/en/setup · **quickstart**
 https://code.claude.com/docs/en/quickstart
 
-### Step 4 — Start Claude Code in this folder
+### Step 4 - Start Claude Code in this folder
 
 From the project folder you cloned in Step 1:
 ```bash
@@ -117,7 +117,7 @@ claude
 The first run opens a browser to log in to your Claude account. Running `claude` **inside this
 folder** is what lets it read the copilot's instructions (`CLAUDE.md` loads automatically).
 
-### Step 5 — Kick off your search
+### Step 5 - Kick off your search
 
 Paste this as your first message (point it at your résumé file — PDF or `.docx`):
 
@@ -190,7 +190,7 @@ See **[database.md](database.md)** for the full CLI.
 ## Notes
 
 - **Nothing here phones home.** The database is one local file. The *agent* uses the web to
-  find and verify jobs (that's the searching), and the helper scripts fetch public ATS feeds —
+  find and verify jobs (that's the searching), and the helper scripts fetch public ATS feeds,
   but your résumé and pipeline stay on your machine. `.gitignore` keeps `jobs.db`, resumes,
   generated docs, and scan/export folders out of git.
 - **For repo owners:** turn on *Settings → Template repository* on GitHub so others can click
