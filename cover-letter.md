@@ -12,7 +12,7 @@ description: >
 
 ## Overview
 
-Write a cover letter that sounds like a real person wrote it — not a template,
+Write a cover letter that sounds like a real person wrote it, not a template,
 not AI-generated boilerplate. The goal is a letter that a hiring manager reads
 in full because it's direct, specific, and clearly written by someone who
 understands the role and has something real to say.
@@ -62,7 +62,7 @@ earlier in the same chat), skip Phase 0 and proceed to Phase 1.
 Before writing, extract:
 
 **From the job description:**
-- What is the company actually building or doing? (not their mission statement — the real thing)
+- What is the company actually building or doing? (not their mission statement: the real thing)
 - What is the role primarily hiring for? (technical execution / leadership / TPM / hybrid)
 - What are the 2–3 things they most need from this hire?
 - Any specific language or requirements worth mirroring
@@ -79,40 +79,39 @@ Before writing, extract:
 
 Four paragraphs. Total length: 300–400 words. No filler.
 
-### Paragraph 1 — Opening hook (2–3 sentences)
+### Paragraph 1: Opening hook (2–3 sentences)
 - Start with something specific and genuine about the company or role
-- Not "I am writing to express my interest" — that is never acceptable
+- Not "I am writing to express my interest": that is never acceptable
 - Options: a specific technical aspect of what they're building, a genuine mission connection,
   something you've heard or read about the team, why this role specifically
 - End with a single clear statement of why you're a strong fit
 
-### Paragraph 2 — Your strongest credential (3–4 sentences)
+### Paragraph 2: Your strongest credential (3–4 sentences)
 - Lead with the most directly relevant experience
 - Be specific: project name or type, scale, what you owned, what the outcome was
 - Mirror the JD's language where it's honest to do so
 - Quantify where possible (team size, budget, performance spec, schedule outcome)
 
-### Paragraph 3 — Second credential or differentiator (3–4 sentences)
+### Paragraph 3: Second credential or differentiator (3–4 sentences)
 - Bring in your second-strongest relevant experience OR
 - Address a differentiator that sets you apart from other candidates
-- This is also where to briefly address a screening risk if one exists —
-  proactively and matter-of-factly, not apologetically
+- This is also where to briefly address a screening risk if one exists:   proactively and matter-of-factly, not apologetically
 
-### Paragraph 4 — Close (2 sentences)
+### Paragraph 4: Close (2 sentences)
 - State clearly what draws you to this company specifically (not generic)
-- Express interest in a conversation — no begging, no over-formality
+- Express interest in a conversation: no begging, no over-formality
 
 ---
 
 ## Phase 3: Tone Rules
 
-- Write in first person, natural mid-register — professional but not stiff
+- Write in first person, natural mid-register: professional but not stiff
 - No corporate buzzwords: "synergy", "passionate", "results-driven", "proven track record"
 - No excessive enthusiasm: "I am thrilled and excited" is never appropriate
-- Do not restate the resume — the letter adds context the resume can't
+- Do not restate the resume: the letter adds context the resume can't
 - Contractions are fine (I've, I'm, I'd)
-- One specific, genuine compliment about the company is good — flattery is not
-- If there's a screening risk, address it directly and briefly — don't hide it,
+- One specific, genuine compliment about the company is good: flattery is not
+- If there's a screening risk, address it directly and briefly: don't hide it,
   don't over-explain it
 
 ---
@@ -123,7 +122,7 @@ If the candidate has a known gap (tool they don't use, domain they haven't worke
 
 - Minor gap (preferred skill, not required): don't mention it in the cover letter
 - Moderate gap (listed requirement, candidate has adjacent experience): briefly note
-  the adjacent strength and move on — one sentence max
+  the adjacent strength and move on, one sentence max
 - Hard gap (true requirement candidate cannot meet): flag to the user before writing;
   if they want to apply anyway, address it directly and honestly in paragraph 3
 
@@ -150,10 +149,10 @@ python jobsdb.py mark <job_id> --cover candidates/<slug>/cover_letters/<filename
 
 - Always run Phase 0 role verification before writing (unless already verified in the
   same conversation)
-- 300–400 words total — never longer unless the user specifically asks
+- 300–400 words total: never longer unless the user specifically asks
 - Never start with "I am writing to express my interest"
-- Never list the resume in prose form — the letter is not a summary
+- Never list the resume in prose form: the letter is not a summary
 - Never fabricate experience or claim skills the candidate doesn't have
 - Never list clearance as active if it is inactive
-- The letter must be specific to this company and role — a generic letter is a failure
+- The letter must be specific to this company and role: a generic letter is a failure
 - Filename convention: `[Company]_CoverLetter_[RoleShorthand].docx`

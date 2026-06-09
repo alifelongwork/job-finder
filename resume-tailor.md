@@ -5,7 +5,7 @@ description: >
   tailor, customize, or optimize their resume for a role or job description.
   Also triggers on: "update my resume for this job", "rewrite my resume",
   "adjust my resume", or when a job description is shared alongside a resume.
-  Always use this skill rather than improvising — it produces consistent,
+  Always use this skill rather than improvising, it produces consistent,
   high-quality tailored output.
 ---
 
@@ -55,7 +55,7 @@ pulled posting wastes the candidate's time and produces a deliverable they can't
     recruiter, internal contact, or a tab they have open) and confirms it's still
     live, proceed with tailoring on their confirmation
 - **Inconclusive (company page inaccessible, no clear "pulled" signal) →** tell the
-  user clearly: *"I couldn't confirm the posting is still live — the career page is
+  user clearly: *"I couldn't confirm the posting is still live, the career page is
   blocked. Can you check directly and confirm before I tailor?"* Wait for their
   confirmation before proceeding.
 
@@ -100,7 +100,7 @@ Ask: what is this role primarily hiring for?
 | Hybrid | Lead with technical depth, support with execution proof points |
 
 Then identify:
-- Which 2–3 bullet points from the base resume are the strongest matches — move these to the top of the most recent role
+- Which 2–3 bullet points from the base resume are the strongest matches: move these to the top of the most recent role
 - Whether the professional summary needs to be rewritten for this framing
 - Whether the skills section ordering needs to shift (put most-relevant domain first)
 - Any screening risks to address (see rules below)
@@ -119,7 +119,7 @@ Then identify:
 
 ### Experience Bullets
 - Reorder bullets within each role so the most JD-relevant ones appear first
-- Rewrite up to 3 bullets per role to more directly mirror JD language — without fabricating
+- Rewrite up to 3 bullets per role to more directly mirror JD language: without fabricating
 - Do not add experience the candidate does not have
 - Quantify wherever possible (team size, budget, schedule outcome, performance spec)
 - Remove or compress bullets that are irrelevant to this specific role
@@ -140,7 +140,7 @@ Then identify:
 If the candidate has a known gap relative to the JD (a required tool they don't use,
 a domain they haven't worked in directly), apply this rule:
 
-**Do not self-select out — but do not hide the gap either.**
+**Do not self-select out, but do not hide the gap either.**
 
 - If the gap is a preferred/bonus skill: ignore it, don't mention it in the resume
 - If the gap is a listed requirement but not truly hard: frame adjacent experience as
@@ -183,7 +183,7 @@ python jobsdb.py mark <job_id> --resume candidates/<slug>/resumes/<filename>.doc
   same conversation)
 - Keep the professional summary to 3 sentences / ~65–70 words
 - Never fabricate experience, skills, or outcomes
-- Never list a clearance as active if it is inactive — always use "previously held, eligible for reinstatement"
-- Technical precision matters — do not change specific performance specs (wavelengths, tolerances, budget figures) unless correcting a known error
+- Never list a clearance as active if it is inactive: always use "previously held, eligible for reinstatement"
+- Technical precision matters: do not change specific performance specs (wavelengths, tolerances, budget figures) unless correcting a known error
 - The resume should read as the candidate's voice, not as a rewrite
 - Filename convention: `[CandidateName]_Resume_[Company]_[RoleShorthand].docx`

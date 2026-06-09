@@ -2,7 +2,7 @@
 
 Run this when registering a **new** candidate (a resume with no match in the database).
 Its purpose is to capture the screening-critical facts that **drive fit assessment** but
-that resumes almost never state — work authorization, clearance, location/remote, comp,
+that resumes almost never state, work authorization, clearance, location/remote, comp,
 and targeting.
 
 ## How to run it
@@ -13,7 +13,7 @@ and targeting.
 2. **Then ask only the gaps below.** Onboarding is the one time it's fine to present the
    core questions as a single short list (rather than one at a time) so the candidate can
    answer in one pass. Lead with the **Required** block.
-3. **For a returning candidate, don't re-ask** — show the stored values (`jobsdb.py
+3. **For a returning candidate, don't re-ask**: show the stored values (`jobsdb.py
    candidate show --slug <slug>`) and ask them to confirm or correct.
 4. **Save answers** with `jobsdb.py candidate add` (+ `category set`). Each question notes
    the DB field its answer maps to.
@@ -39,11 +39,11 @@ and targeting.
      `"previously held Secret, lapsed 2024, eligible for reinstatement"`, `"active TS/SCI"`.
 
 3. **Location & work mode** → field `location_constraint`
-   - Where do you want to work — specific cities, a metro, or fully remote?
+   - Where do you want to work: specific cities, a metro, or fully remote?
    - Remote / hybrid / onsite preference?
    - Willing to relocate? If so, where?
    - *Why:* this is the mandatory Phase 4c gate. Capture it as one rich sentence.
-   - *Example:* `"Denver metro, CO — Colorado-based or fully remote only, no relocation"`.
+   - *Example:* `"Denver metro, CO: Colorado-based or fully remote only, no relocation"`.
 
 ---
 
@@ -60,15 +60,15 @@ and targeting.
 6. **Ranked job categories** → `candidate_categories` (via `category set`)
    - List the industries / role types you want, **best first**. These drive which searches
      run and in what priority order.
-   - *Examples:* a SWE — 1) Quantum software/computing, 2) Quantum-adjacent software,
-     3) General SWE/AI; an IT admin — 1) Systems/Infrastructure admin, 2) Cloud/DevOps ops,
+   - *Examples:* a SWE: 1) Quantum software/computing, 2) Quantum-adjacent software,
+     3) General SWE/AI; an IT admin, 1) Systems/Infrastructure admin, 2) Cloud/DevOps ops,
      3) IT lead. (See `examples/` for full worked profiles.)
 
 7. **Seniority you're targeting + your years of experience** → field `notes`
    - This can be a **range / multiple levels** (e.g. "new-grad through mid"), not a single
-     pick — record all levels they'd accept, plus their actual YOE.
+     pick, record all levels they'd accept, plus their actual YOE.
    - *Why:* prevents over/under-leveling mismatches. (We've seen early-career candidates
-     screened out by Senior/Staff postings — record the real level so tiering is honest.
+     screened out by Senior/Staff postings, record the real level so tiering is honest.
      Levels above the target range get surfaced but flagged as over-leveled reaches.)
 
 8. **Companies to avoid / already applied to / on cooldown** → field `notes`

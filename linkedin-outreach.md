@@ -39,14 +39,14 @@ Not all contacts are equal. Prioritize in this order:
 
 | Priority | Contact type | Why |
 |----------|-------------|-----|
-| ★★★ | Hiring manager for the specific role | Direct decision-maker — highest value |
+| ★★★ | Hiring manager for the specific role | Direct decision-maker, highest value |
 | ★★★ | Person who posted the job on LinkedIn | Often HM or internal recruiter with direct line |
 | ★★ | Team lead or senior engineer on the target team | Can advocate internally, provide team intel |
 | ★★ | Internal recruiter at the company (not agency) | Routes applications, can flag your profile |
 | ★ | Peer-level engineer on the target team | Warm introduction, can refer internally |
 | ★ | Alumni connection (same school, same previous employer) | Genuine hook for cold outreach |
-| — | External / agency recruiter | Lower value — they don't work at the company |
-| — | C-suite / VP at large companies | Too far from hiring decision — skip |
+|, | External / agency recruiter | Lower value, they don't work at the company |
+|, | C-suite / VP at large companies | Too far from hiring decision, skip |
 
 ---
 
@@ -94,7 +94,7 @@ For each contact found, assess:
 - **Hook**: Is there a genuine reason to reach out? (shared background, their public post, their specific work)
 - **Reachability**: Are they active on LinkedIn? (recent posts, engagement)
 
-Flag contacts where there is NO genuine hook — cold outreach with no hook
+Flag contacts where there is NO genuine hook, cold outreach with no hook
 has low response rates and can hurt more than help.
 
 ---
@@ -126,20 +126,20 @@ If the user asks for message drafts, apply these rules:
 **Format:** 3–4 sentences max. No more.
 
 **Structure:**
-- Sentence 1: specific hook (their post, their work, shared background) — not generic
+- Sentence 1: specific hook (their post, their work, shared background): not generic
 - Sentence 2: one sentence on who you are and why it's relevant to them
 - Sentence 3: what you're asking (brief call, their perspective, referral)
 - Optional sentence 4: one specific credential or detail to build credibility
 
 **Tone rules:**
-- Informal, natural, mid-register — not templated, not stiff
+- Informal, natural, mid-register: not templated, not stiff
 - Do not use: "I hope this message finds you well", "I came across your profile",
   "I would love to connect", "I am reaching out because"
 - Sound like a peer, not a job seeker cold-pitching
-- Personalize per contact — the same message to every person is immediately obvious
+- Personalize per contact: the same message to every person is immediately obvious
 
 **What NOT to ask for in a first message:**
-- A referral (too early — build rapport first)
+- A referral (too early: build rapport first)
 - A job (never)
 - A long call or meeting
 
@@ -152,8 +152,8 @@ If the user asks for message drafts, apply these rules:
 
 ## Rules
 
-- Never invent or guess names — only report contacts that were actually found
-- Always identify the hook before drafting a message — no hook, no message
-- Prioritize genuine connections over volume — 2 strong contacts beat 10 weak ones
-- Outreach goes before application submission for Tier 1 roles — sequence matters
-- Flag if a contact appears to be an external recruiter vs. internal — different value
+- Never invent or guess names: only report contacts that were actually found
+- Always identify the hook before drafting a message: no hook, no message
+- Prioritize genuine connections over volume: 2 strong contacts beat 10 weak ones
+- Outreach goes before application submission for Tier 1 roles: sequence matters
+- Flag if a contact appears to be an external recruiter vs. internal: different value

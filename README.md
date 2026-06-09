@@ -69,7 +69,7 @@ Check whether you already have it:
 python --version        # or:  python3 --version
 ```
 If not, install from **https://www.python.org/downloads/** (or your OS package manager). No
-third-party packages are required for the core — it's standard library only. *(Optional:
+third-party packages are required for the core; it's standard library only. *(Optional:
 `pip install python-docx` only if you want Microsoft Word `.docx` report exports; CSV, Markdown,
 and Excel `.xlsx` exports work without it.)*
 
