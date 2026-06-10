@@ -134,6 +134,31 @@ your saved roles are still posted, flags ones that disappeared, picks up posted 
 ranges, and drafts any new matching roles for review. Claude runs this at the start of a
 session; you can also run it yourself (or ask Claude to schedule it daily).
 
+### The refresh routine (no Claude required)
+
+The full keep-it-fresh sequence, in order:
+
+1. **Sweep:** `python sweep.py --candidate me --out job_scans/<today>_sweep-draft.json`
+2. **Apply its output:** the sweep prints ready-made commands; copy-paste each one it
+   suggests: a `mark ... --verified` line (roles confirmed live), a `mark ... --status
+   expired` line (roles gone from their feed), and one `mark <id> --comp-min ...` line
+   per salary backfill.
+3. **Review new roles (the one judgment step):** if the draft file has roles, either ask
+   Claude to "review and upsert the sweep draft", or open the JSON yourself, set `tier`
+   (1/2/3) and a one-line `fit_summary` per role, delete misfits, then run
+   `python jobsdb.py upsert-batch job_scans/<today>_sweep-draft.json`. Nothing enters the
+   database until this step.
+4. **Snapshot:** `python jobsdb.py export --candidate me --format xlsx --all`
+5. **Act:** `python jobsdb.py followups --candidate me` shows who to message and which
+   applications have gone quiet.
+
+**What the sweep does NOT cover:** companies tracked as careers-page-only monitors
+(no machine-readable feed, e.g. Lockheed Martin, L3Harris, Optiv, DISH, Charter). List
+them with `python jobsdb.py company list` (they show in `company show` as
+`careers_only`); check their careers pages occasionally or ask Claude to. Per-role
+re-verification right before you apply, and resume/cover-letter tailoring, also still
+want Claude.
+
 **Find postings that should be re-checked for freshness (roles the sweep can't reach):**
 ```
 python jobsdb.py reverify list --candidate me
