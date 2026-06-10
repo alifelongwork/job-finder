@@ -32,11 +32,19 @@ SCHEMA_PATH = os.path.join(HERE, "schema.sql")
 CANDIDATE_FIELDS = {
     "name", "email", "location_constraint", "citizenship", "clearance",
     "comp_floor", "comp_target", "resume_path", "notes",
+    # Structured screens (consumed by sweep.py; upsert-batch warns on violations):
+    # seniority_filter = regex for over-leveled/non-FTE titles; exclusions =
+    # comma-separated industry/term blocklist, matched on word boundaries.
+    "seniority_filter", "exclusions",
 }
 INT_FIELDS = {"comp_floor", "comp_target"}
 VALID_TAGS = {"verified", "wrong_location", "aggregator", "unverified"}
-VALID_STATUS = {"new", "active", "applied", "expired", "rejected", "ignored"}
-TERMINAL_STATUS = {"applied", "ignored", "rejected"}
+VALID_STATUS = {"new", "active", "applied", "interviewing", "offer",
+                "expired", "rejected", "ignored"}
+# User-owned statuses a re-scan must never clobber back to new/active. 'interviewing'
+# and 'offer' are post-application stages set via `mark` (deeper in the funnel than
+# 'applied', so even more protected).
+TERMINAL_STATUS = {"applied", "interviewing", "offer", "ignored", "rejected"}
 # Dead / set-aside statuses hidden from default query+export views (opt in with --all).
 # Kept in the DB (history + dedup), just not shown unless asked.
 INACTIVE_STATUS = {"expired", "rejected", "ignored"}
@@ -45,13 +53,26 @@ INACTIVE_STATUS = {"expired", "rejected", "ignored"}
 # careers page exists but no clean feed; unresolved = couldn't resolve (transient/unknown
 # — recheck later); unverified = explicitly checked and no hiring surface found.
 COMPANY_VERIFY_STATUS = {"feed_verified", "careers_only", "unresolved", "unverified"}
-# Columns added to `companies` after the original schema shipped. _migrate() adds any that
+# Columns added after the original schema shipped, per table. _migrate() adds any that
 # are missing, so an existing jobs.db upgrades in place (init won't — it skips populated DBs).
-COMPANY_MIGRATIONS = [
-    ("verification_status", "TEXT"),
-    ("last_verified", "TEXT"),
-    ("open_roles", "INTEGER"),
-]
+MIGRATIONS = {
+    "companies": [
+        ("verification_status", "TEXT"),
+        ("last_verified", "TEXT"),
+        ("open_roles", "INTEGER"),
+    ],
+    "candidates": [
+        ("seniority_filter", "TEXT"),   # regex: titles the candidate is NOT targeting
+        ("exclusions", "TEXT"),         # comma-separated industry/term blocklist
+    ],
+    "jobs": [
+        ("last_followup", "TEXT"),      # ISO date of the last post-application follow-up
+    ],
+    "contacts": [
+        ("contacted_date", "TEXT"),     # ISO date outreach was sent
+        ("response", "TEXT"),           # what came back (reply / no answer / referral...)
+    ],
+}
 
 
 # ---------------------------------------------------------------------------
@@ -110,12 +131,15 @@ def _migrate(conn):
     universal chokepoint) because `init` short-circuits on a populated DB and so never sees
     it. Steady state is one cheap PRAGMA + set-diff and no write; each ALTER fires once per
     DB. Column names are hard-coded constants (COMPANY_MIGRATIONS) — never user input."""
-    cols = {r["name"] for r in conn.execute("PRAGMA table_info(companies)")}
     added = False
-    for name, decl in COMPANY_MIGRATIONS:
-        if name not in cols:
-            conn.execute(f"ALTER TABLE companies ADD COLUMN {name} {decl}")
-            added = True
+    for table, columns in MIGRATIONS.items():
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if not cols:
+            continue  # table absent (partial/old DB) — init/schema.sql owns creation
+        for name, decl in columns:
+            if name not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+                added = True
     if added:
         conn.commit()
 
@@ -189,6 +213,11 @@ def parse_fields(field_args):
         v = v.strip()
         if k in INT_FIELDS:
             v = parse_comp(v)
+        if k == "seniority_filter" and v:
+            try:
+                re.compile(v)
+            except re.error as e:
+                sys.exit(f"seniority_filter must be a valid regex: {e}")
         fields[k] = v
     return fields
 
@@ -249,7 +278,8 @@ def cmd_candidate_show(args):
     c = get_candidate(conn, args.slug)
     print(f"# {c['name']}  ({c['slug']})")
     for k in ("email", "location_constraint", "citizenship", "clearance",
-              "comp_floor", "comp_target", "resume_path", "notes"):
+              "comp_floor", "comp_target", "seniority_filter", "exclusions",
+              "resume_path", "notes"):
         if c[k] not in (None, ""):
             print(f"  {k:<20} {c[k]}")
     cats = conn.execute(
@@ -325,15 +355,47 @@ def upsert_company(conn, job):
 
 
 def replace_contacts(conn, job_id, contacts):
+    """Replace a job's contacts from a scan batch, PRESERVING outreach state
+    (contacted_date/response are user actions a re-scan must never wipe). Existing
+    state carries over to the incoming contact with the same name, or failing that
+    the same contact_type."""
+    old = conn.execute(
+        "SELECT name, contact_type, contacted_date, response FROM contacts "
+        "WHERE job_id = ? AND contacted_date IS NOT NULL", (job_id,)).fetchall()
+    by_name = {(r["name"] or "").lower(): r for r in old if r["name"]}
+    by_type = {(r["contact_type"] or "").lower(): r for r in old}
     conn.execute("DELETE FROM contacts WHERE job_id = ?", (job_id,))
     for ct in contacts or []:
+        prev = (by_name.get((ct.get("name") or "").lower())
+                or by_type.get((ct.get("contact_type") or "").lower()))
         conn.execute(
             "INSERT INTO contacts (job_id, name, title, priority, contact_type, hook, "
-            "action, confirmed, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "action, confirmed, notes, contacted_date, response) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (job_id, ct.get("name"), ct.get("title"), ct.get("priority"),
              ct.get("contact_type"), ct.get("hook"), ct.get("action"),
-             1 if ct.get("confirmed") else 0, ct.get("notes")),
+             1 if ct.get("confirmed") else 0, ct.get("notes"),
+             prev["contacted_date"] if prev else None,
+             prev["response"] if prev else None),
         )
+
+
+def candidate_screens(c):
+    """Compile the candidate's structured screens: (seniority regex | None,
+    [exclusion word-boundary regexes]). Exclusions match on word boundaries so
+    'crypto' does NOT hit 'cryptography'."""
+    keys = c.keys()
+    sen = None
+    raw = c["seniority_filter"] if "seniority_filter" in keys else None
+    if raw:
+        try:
+            sen = re.compile(raw)
+        except re.error:
+            print(f"WARNING: candidate seniority_filter is not a valid regex; ignoring: {raw}")
+    excl_raw = c["exclusions"] if "exclusions" in keys else None
+    excl = [(x.strip(), re.compile(rf"(?i)\b{re.escape(x.strip())}\b"))
+            for x in (excl_raw or "").split(",") if x.strip()]
+    return sen, excl
 
 
 def cmd_upsert_batch(args):
@@ -343,6 +405,8 @@ def cmd_upsert_batch(args):
     conn = connect()
     c = get_candidate(conn, batch["candidate"])
     cid = c["id"]
+    sen_re, excl_res = candidate_screens(c)
+    warnings = []
 
     n_new = n_upd = 0
     for job in batch.get("jobs", []):
@@ -353,6 +417,22 @@ def cmd_upsert_batch(args):
             sys.exit(f"Job for company '{job.get('company')}' is missing required "
                      "field 'title' (NOT NULL).")
         key = make_dedup_key(job)
+        # Structured-screen warnings (informational — the agent may store a flagged
+        # role deliberately, e.g. with the risk noted in screening_risks).
+        title, company = job.get("title", ""), job.get("company", "")
+        if sen_re and sen_re.search(title) and job.get("tier") in (1, 2):
+            warnings.append(f"LEVEL: Tier {job['tier']} '{title}' ({company}) "
+                            "matches the candidate's seniority_filter — over-leveled?")
+        floor = c["comp_floor"] if "comp_floor" in c.keys() else None
+        cmax = job.get("comp_max") or job.get("comp_min")
+        if floor and cmax and cmax < floor and job.get("tier") in (1, 2):
+            warnings.append(f"COMP: Tier {job['tier']} '{title}' ({company}) tops out at "
+                            f"${cmax:,} — below the candidate's ${floor:,} floor.")
+        for term, ex_re in excl_res:
+            if ex_re.search(f"{company} {title}"):
+                warnings.append(f"EXCLUSION: '{title}' ({company}) matches excluded "
+                                f"term '{term}' — confirm before pursuing.")
+                break
         company_id = upsert_company(conn, job)
         # 'verified' and 'wrong_location' were both confirmed live on the company
         # surface (location was read from it) -> they set last_verified. 'aggregator'
@@ -433,6 +513,8 @@ def cmd_upsert_batch(args):
     print(json.dumps(summary))
     print(f"Upserted {found} job(s) for '{batch['candidate']}': "
           f"{n_new} new, {n_upd} updated.")
+    for w in warnings:
+        print(f"  WARNING {w}")
 
 
 # ---------------------------------------------------------------------------
@@ -474,6 +556,11 @@ def job_filter_clause(conn, args):
         params.append(1 if args.location_match == "yes" else 0)
     if getattr(args, "since", None):
         where.append("j.last_seen >= ?"); params.append(args.since)
+    if getattr(args, "comp_min", None):
+        # "Could pay at least N": the top of the posted range reaches N. Jobs with no
+        # comp data are excluded — this filter answers "which postings PROVE the floor".
+        where.append("COALESCE(j.comp_max, j.comp_min) >= ?")
+        params.append(parse_comp(str(args.comp_min)))
     return where, params
 
 
@@ -558,6 +645,40 @@ def cmd_stats(args):
         "SELECT count(*) FROM jobs WHERE candidate_id=? AND location_match=1", (cid,)
     ).fetchone()[0]
     print(f"location match: {matched}/{total} passed")
+
+    # Category yield (actionable statuses only): which ranked categories actually
+    # produce Tier 1/2 roles — the signal for re-ranking or re-keywording categories.
+    cat_rows = conn.execute(
+        "SELECT COALESCE(category_label, '(uncategorized)') AS cat, "
+        "SUM(CASE WHEN tier=1 THEN 1 ELSE 0 END) AS t1, "
+        "SUM(CASE WHEN tier=2 THEN 1 ELSE 0 END) AS t2, "
+        "SUM(CASE WHEN tier=3 THEN 1 ELSE 0 END) AS t3, "
+        "SUM(CASE WHEN tier IS NULL THEN 1 ELSE 0 END) AS untiered, "
+        "COUNT(*) AS n "
+        "FROM jobs WHERE candidate_id=? "
+        "AND status IN ('new','active','applied','interviewing','offer') "
+        "GROUP BY cat ORDER BY t1 DESC, t2 DESC, n DESC", (cid,)).fetchall()
+    if cat_rows:
+        print("category yield (live + applied):")
+        print(f"  {'category':<42} {'T1':>3} {'T2':>3} {'T3':>3} {'unt':>4} {'all':>4}")
+        for r in cat_rows:
+            print(f"  {r['cat'][:42]:<42} {r['t1']:>3} {r['t2']:>3} {r['t3']:>3} "
+                  f"{r['untiered']:>4} {r['n']:>4}")
+
+    # Comp coverage on the LIVE pipeline (Colorado's pay-transparency law means most
+    # CO-performable postings publish a range — missing comp is a capture gap, not
+    # an employer gap). Below-floor names the roles that provably miss the floor.
+    live_total, with_comp = conn.execute(
+        "SELECT count(*), count(comp_min) FROM jobs "
+        "WHERE candidate_id=? AND status IN ('new','active')", (cid,)).fetchone()
+    line = f"comp data: {with_comp}/{live_total} live roles have a posted range"
+    floor = c["comp_floor"] if "comp_floor" in c.keys() else None
+    if floor:
+        below = conn.execute(
+            "SELECT count(*) FROM jobs WHERE candidate_id=? AND status IN ('new','active') "
+            "AND COALESCE(comp_max, comp_min) < ?", (cid, floor)).fetchone()[0]
+        line += f"; {below} below the ${floor:,} floor"
+    print(line)
     conn.close()
 
 
@@ -614,40 +735,242 @@ def cmd_reverify(args):
 # mark
 # ---------------------------------------------------------------------------
 def cmd_mark(args):
+    """Update one or more jobs. Multiple ids apply the same change to each (the bulk
+    path sweep.py's confirmed-live / expire-candidate output uses)."""
     conn = connect()
-    job = conn.execute("SELECT * FROM jobs WHERE id = ?", (args.job_id,)).fetchone()
-    if not job:
-        sys.exit(f"No job with id {args.job_id}.")
+    for job_id in args.job_id:
+        job = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        if not job:
+            sys.exit(f"No job with id {job_id}.")
 
-    updates = {}
-    if args.status:
-        updates["status"] = args.status
-        if args.status == "applied" and not args.applied_date:
-            updates["applied_date"] = today()
-    if args.applied_date:
-        updates["applied_date"] = args.applied_date
-    if args.verified:
-        updates["last_verified"] = today()
-        # A confirmed-live job that wasn't terminal becomes/stays active.
-        if job["status"] in ("new", "expired") and not args.status:
-            updates["status"] = "active"
-    if args.resume:
-        updates["resume_path"] = args.resume
-    if args.cover:
-        updates["cover_letter_path"] = args.cover
-    if args.note:
-        existing = (job["notes"] + "\n") if job["notes"] else ""
-        updates["notes"] = existing + f"[{today()}] {args.note}"
+        updates = {}
+        if args.status:
+            updates["status"] = args.status
+            if args.status == "applied" and not args.applied_date:
+                updates["applied_date"] = today()
+        if args.applied_date:
+            updates["applied_date"] = args.applied_date
+        if args.verified:
+            updates["last_verified"] = today()
+            # A confirmed-live job that wasn't terminal becomes/stays active.
+            if job["status"] in ("new", "expired") and not args.status:
+                updates["status"] = "active"
+        if args.resume:
+            updates["resume_path"] = args.resume
+        if args.cover:
+            updates["cover_letter_path"] = args.cover
+        if args.comp_min:
+            updates["comp_min"] = parse_comp(args.comp_min)
+        if args.comp_max:
+            updates["comp_max"] = parse_comp(args.comp_max)
+        if args.followed_up:
+            updates["last_followup"] = today()
+        if args.note:
+            existing = (job["notes"] + "\n") if job["notes"] else ""
+            updates["notes"] = existing + f"[{today()}] {args.note}"
 
-    if not updates:
-        sys.exit("Nothing to update. Provide --status/--verified/--resume/--cover/"
-                 "--applied-date/--note.")
+        if not updates:
+            sys.exit("Nothing to update. Provide --status/--verified/--resume/--cover/"
+                     "--applied-date/--comp-min/--comp-max/--note.")
 
-    sets = ", ".join(f"{k}=?" for k in updates)
-    conn.execute(f"UPDATE jobs SET {sets} WHERE id=?", [*updates.values(), args.job_id])
+        sets = ", ".join(f"{k}=?" for k in updates)
+        conn.execute(f"UPDATE jobs SET {sets} WHERE id=?", [*updates.values(), job_id])
+        print(f"Updated job {job_id}: " + ", ".join(f"{k}={v}" for k, v in updates.items()))
     conn.commit()
     conn.close()
-    print(f"Updated job {args.job_id}: " + ", ".join(f"{k}={v}" for k, v in updates.items()))
+
+
+# ---------------------------------------------------------------------------
+# audit — dedup + hard-rule integrity checks (report-only; never writes)
+# ---------------------------------------------------------------------------
+def cmd_audit(args):
+    """Find rows that violate the dedup or tiering rules:
+    1. suffix dupes — dedup_keys equal after stripping a trailing -N (the Workday
+       instance-suffix trap; pre-rule rows like sierra r25615 vs r25615-1)
+    2. same company+title under different dedup_keys (re-post / cross-platform dupes)
+    3. hard-rule violations — Tier 1/2 without location_match, wrong_location with a
+       tier, Tier 1/2 without a url
+    Report-only: prints suggested `mark` commands, changes nothing."""
+    conn = connect()
+    c = get_candidate(conn, args.candidate)
+    rows = conn.execute(
+        "SELECT j.id, j.dedup_key, j.title, j.status, j.tier, j.url, j.location_match, "
+        "j.verification_tag, j.first_seen, COALESCE(co.name,'') AS company "
+        "FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
+        "WHERE j.candidate_id = ?", (c["id"],)).fetchall()
+    conn.close()
+    issues = 0
+
+    # 1. suffix dupes (only meaningful for live rows; an expired dupe is history)
+    by_base = {}
+    for r in rows:
+        base = re.sub(r"-\d+$", "", r["dedup_key"])
+        by_base.setdefault(base, []).append(r)
+    print("== suffix dupes (same key modulo trailing -N) ==")
+    found = False
+    for base, group in sorted(by_base.items()):
+        if len(group) < 2:
+            continue
+        keep = min(group, key=lambda r: (r["first_seen"] or "9999", r["id"]))
+        dupes = [r for r in group if r["id"] != keep["id"]
+                 and r["status"] in ("new", "active")]
+        if not dupes:
+            continue  # already resolved (dupes dead/ignored) — not actionable
+        found = True
+        issues += 1
+        print(f"  {base}:")
+        for r in sorted(group, key=lambda r: r["id"]):
+            mark = "KEEP (oldest)" if r["id"] == keep["id"] else "duplicate"
+            print(f"    id={r['id']:<4} [{r['status']:<8}] {r['dedup_key']}  <- {mark}")
+        print(f"    fix:  python jobsdb.py mark {' '.join(str(r['id']) for r in dupes)} "
+              f"--status ignored --note \"duplicate of job {keep['id']} (suffix-dupe audit)\"")
+    if not found:
+        print("  (none)")
+
+    # 2. same company + title, different keys (live rows only)
+    print("== same company+title under different dedup_keys ==")
+    by_ct = {}
+    for r in rows:
+        if r["status"] not in ("new", "active"):
+            continue
+        by_ct.setdefault((r["company"].lower(), (r["title"] or "").lower()), []).append(r)
+    found = False
+    for (comp, title), group in sorted(by_ct.items()):
+        keys = {re.sub(r"-\d+$", "", g["dedup_key"]) for g in group}
+        if len(keys) < 2:
+            continue  # suffix dupes already reported above
+        found = True
+        issues += 1
+        print(f"  {group[0]['company']}: {group[0]['title']}")
+        for r in group:
+            print(f"    id={r['id']:<4} [{r['status']:<8}] {r['dedup_key']}")
+        print("    -> verify on the company surface whether these are distinct reqs "
+              "(multi-region/teams) or a re-post; ignore the dead one if a re-post.")
+    if not found:
+        print("  (none)")
+
+    # 3. hard-rule violations
+    print("== hard-rule violations ==")
+    found = False
+    for r in rows:
+        problems = []
+        if r["tier"] in (1, 2) and not r["location_match"]:
+            problems.append("Tier 1/2 without location_match (NEVER allowed)")
+        if r["tier"] in (1, 2) and r["verification_tag"] == "wrong_location":
+            problems.append("wrong_location with Tier 1/2 (NEVER allowed)")
+        if r["tier"] in (1, 2) and not r["url"]:
+            problems.append("Tier 1/2 without a source url")
+        for p in problems:
+            found = True
+            issues += 1
+            print(f"  id={r['id']:<4} {r['company']}: {r['title']} — {p}")
+    if not found:
+        print("  (none)")
+    print(f"\n{issues} issue(s) found." if issues else "\nClean: no issues found.")
+
+
+# ---------------------------------------------------------------------------
+# followups — the post-search funnel view (outreach due + follow-ups due)
+# ---------------------------------------------------------------------------
+def cmd_followups(args):
+    """Surface what outreach/follow-up action is due. Two sections:
+    1. PRE-application outreach due: live Tier 1 roles whose stored contacts were
+       never contacted (the rule is outreach BEFORE applying).
+    2. POST-application follow-ups due: applied/interviewing jobs not touched in
+       --days days (since application or last follow-up, whichever is later)."""
+    conn = connect()
+    c = get_candidate(conn, args.candidate)
+    cutoff = (datetime.date.today() - datetime.timedelta(days=args.days)).isoformat()
+
+    pre = conn.execute(
+        "SELECT j.id AS job_id, j.title, COALESCE(co.name,'') AS company, "
+        "ct.id AS contact_id, ct.name, ct.contact_type, ct.priority "
+        "FROM jobs j JOIN contacts ct ON ct.job_id = j.id "
+        "LEFT JOIN companies co ON co.id = j.company_id "
+        "WHERE j.candidate_id = ? AND j.status IN ('new','active') AND j.tier = 1 "
+        "AND ct.contacted_date IS NULL "
+        "ORDER BY j.id, ct.priority DESC", (c["id"],)).fetchall()
+    post = conn.execute(
+        "SELECT j.id, j.title, j.status, j.applied_date, j.last_followup, "
+        "COALESCE(co.name,'') AS company "
+        "FROM jobs j LEFT JOIN companies co ON co.id = j.company_id "
+        "WHERE j.candidate_id = ? AND j.status IN ('applied','interviewing') "
+        "AND COALESCE(j.last_followup, j.applied_date, j.first_seen) <= ? "
+        "ORDER BY COALESCE(j.last_followup, j.applied_date)", (c["id"], cutoff)).fetchall()
+    conn.close()
+
+    if args.format == "json":
+        print(json.dumps({"outreach_due": [dict(r) for r in pre],
+                          "followups_due": [dict(r) for r in post]}, indent=2))
+        return
+    if not pre and not post:
+        print(f"Nothing due (no un-contacted Tier 1 contacts; no applied/interviewing "
+              f"job untouched for {args.days}+ days).")
+        return
+    if pre:
+        print(f"{len(pre)} Tier 1 contact(s) never contacted — outreach goes BEFORE applying:")
+        for r in pre:
+            who = r["name"] or f"({r['contact_type']} — name unconfirmed)"
+            print(f"  job={r['job_id']:<4} {r['company']}: {r['title']}")
+            print(f"        contact #{r['contact_id']}: {who}  {r['priority'] or ''}")
+        print("  After sending:  jobsdb.py contact mark <contact_id> --contacted")
+    if post:
+        print(f"\n{len(post)} applied/interviewing job(s) due a follow-up "
+              f"(no touch in {args.days}+ days):")
+        for r in post:
+            last = r["last_followup"] or r["applied_date"] or "?"
+            print(f"  id={r['id']:<4} [{r['status']:<12}] {r['company']}: {r['title']}  "
+                  f"(last touch {last})")
+        print("  After following up:  jobsdb.py mark <id> --followed-up "
+              "[--note \"pinged recruiter\"]")
+
+
+# ---------------------------------------------------------------------------
+# contact — outreach tracking on stored contacts
+# ---------------------------------------------------------------------------
+def cmd_contact_list(args):
+    conn = connect()
+    c = get_candidate(conn, args.candidate)
+    sql = ("SELECT ct.id, ct.job_id, ct.name, ct.title, ct.priority, ct.contact_type, "
+           "ct.contacted_date, ct.response, j.title AS job_title, "
+           "COALESCE(co.name,'') AS company "
+           "FROM contacts ct JOIN jobs j ON j.id = ct.job_id "
+           "LEFT JOIN companies co ON co.id = j.company_id WHERE j.candidate_id = ?")
+    params = [c["id"]]
+    if args.job:
+        sql += " AND ct.job_id = ?"
+        params.append(args.job)
+    rows = conn.execute(sql + " ORDER BY ct.job_id, ct.priority DESC", params).fetchall()
+    conn.close()
+    if not rows:
+        print("(no contacts stored" + (f" for job {args.job}" if args.job else "") + ")")
+        return
+    for r in rows:
+        who = r["name"] or f"({r['contact_type']} — unconfirmed)"
+        state = (f"contacted {r['contacted_date']}" if r["contacted_date"] else "NOT contacted")
+        resp = f"  response: {r['response']}" if r["response"] else ""
+        print(f"  #{r['id']:<3} job={r['job_id']:<4} {r['company']}: {r['job_title']}")
+        print(f"       {who}  [{r['title'] or r['contact_type'] or '?'}] {r['priority'] or ''}  — {state}{resp}")
+
+
+def cmd_contact_mark(args):
+    conn = connect()
+    row = conn.execute("SELECT * FROM contacts WHERE id = ?", (args.contact_id,)).fetchone()
+    if not row:
+        sys.exit(f"No contact with id {args.contact_id}. See: jobsdb.py contact list")
+    updates = {}
+    if args.contacted is not False:  # flag present (None = today, or an explicit date)
+        updates["contacted_date"] = args.contacted or today()
+    if args.response:
+        updates["response"] = args.response
+    if not updates:
+        sys.exit("Nothing to update. Provide --contacted [date] and/or --response.")
+    conn.execute(f"UPDATE contacts SET {', '.join(f'{k}=?' for k in updates)} WHERE id=?",
+                 [*updates.values(), args.contact_id])
+    conn.commit()
+    conn.close()
+    print(f"Updated contact {args.contact_id}: "
+          + ", ".join(f"{k}={v}" for k, v in updates.items()))
 
 
 # ---------------------------------------------------------------------------
@@ -657,7 +980,8 @@ EXPORT_COLS = [
     "id", "tier", "status", "verification_tag", "company", "title", "location",
     "remote_type", "location_match", "comp_min", "comp_max", "posting_date",
     "category_label", "url", "first_seen", "last_seen", "last_verified",
-    "applied_date", "fit_summary", "screening_risks", "resume_path", "cover_letter_path",
+    "applied_date", "last_followup", "fit_summary", "screening_risks",
+    "resume_path", "cover_letter_path",
 ]
 
 
@@ -806,7 +1130,7 @@ def _export_xlsx(rows, cand, path):
         sd.append("</row>")
 
     # helpful widths for the wide free-text columns (1-based positions in EXPORT_COLS)
-    widths = {5: 22, 6: 40, 7: 26, 14: 46, 19: 50, 20: 44}
+    widths = {5: 22, 6: 40, 7: 26, 14: 46, 20: 50, 21: 44}
     cols_xml = "".join(f'<col min="{i}" max="{i}" width="{w}" customWidth="1"/>'
                        for i, w in widths.items())
     sheet = (
@@ -1164,6 +1488,9 @@ def build_parser():
     q.add_argument("--verification", choices=sorted(VALID_TAGS))
     q.add_argument("--location-match", dest="location_match", choices=["yes", "no"])
     q.add_argument("--since")
+    q.add_argument("--comp-min", dest="comp_min",
+                   help="Only jobs whose posted range reaches this (e.g. 80k or 80000); "
+                        "jobs with no comp data are excluded")
     q.add_argument("--limit", type=int)
     q.add_argument("--all", action="store_true",
                    help="Include expired/rejected/ignored (hidden by default)")
@@ -1173,6 +1500,31 @@ def build_parser():
     st = sub.add_parser("stats", help="Pipeline breakdown")
     st.add_argument("--candidate", required=True)
     st.set_defaults(func=cmd_stats)
+
+    au = sub.add_parser("audit", help="Dedup + hard-rule integrity checks (report-only)")
+    au.add_argument("--candidate", required=True)
+    au.set_defaults(func=cmd_audit)
+
+    fu = sub.add_parser("followups",
+                        help="What outreach/follow-up is due (pre-apply contacts + post-apply pings)")
+    fu.add_argument("--candidate", required=True)
+    fu.add_argument("--days", type=int, default=5,
+                    help="Follow-up window for applied/interviewing jobs (default 5)")
+    fu.add_argument("--format", choices=["table", "json"], default="table")
+    fu.set_defaults(func=cmd_followups)
+
+    cn = sub.add_parser("contact", help="Track LinkedIn outreach on stored contacts")
+    cnsub = cn.add_subparsers(dest="action", required=True)
+    cnl = cnsub.add_parser("list", help="List contacts with outreach state")
+    cnl.add_argument("--candidate", required=True)
+    cnl.add_argument("--job", type=int, help="Only contacts for this job id")
+    cnl.set_defaults(func=cmd_contact_list)
+    cnm = cnsub.add_parser("mark", help="Record outreach sent / response received")
+    cnm.add_argument("contact_id", type=int)
+    cnm.add_argument("--contacted", nargs="?", const=None, default=False,
+                     help="Outreach sent (optionally pass the ISO date; default today)")
+    cnm.add_argument("--response", help="What came back (reply / referral / no answer)")
+    cnm.set_defaults(func=cmd_contact_mark)
 
     rv = sub.add_parser("reverify", help="List stale jobs needing re-verification")
     rvsub = rv.add_subparsers(dest="action", required=True)
@@ -1184,13 +1536,18 @@ def build_parser():
     rvl.add_argument("--format", choices=["table", "json"], default="table")
     rvl.set_defaults(func=cmd_reverify)
 
-    mk = sub.add_parser("mark", help="Update one job (status / verified / paths / notes)")
-    mk.add_argument("job_id", type=int)
+    mk = sub.add_parser("mark", help="Update one or more jobs (status / verified / paths / notes)")
+    mk.add_argument("job_id", type=int, nargs="+",
+                    help="One or more job ids (same change applied to each)")
     mk.add_argument("--status", choices=sorted(VALID_STATUS))
     mk.add_argument("--verified", action="store_true", help="Refresh last_verified to today")
     mk.add_argument("--resume", help="Path to tailored resume .docx")
     mk.add_argument("--cover", help="Path to cover letter .docx")
     mk.add_argument("--applied-date", dest="applied_date", help="ISO date")
+    mk.add_argument("--comp-min", dest="comp_min", help="Posted range floor (e.g. 95k)")
+    mk.add_argument("--comp-max", dest="comp_max", help="Posted range ceiling (e.g. 120k)")
+    mk.add_argument("--followed-up", dest="followed_up", action="store_true",
+                    help="Record a post-application follow-up today")
     mk.add_argument("--note", help="Append a timestamped note")
     mk.set_defaults(func=cmd_mark)
 
@@ -1203,6 +1560,8 @@ def build_parser():
     ex.add_argument("--verification", choices=sorted(VALID_TAGS))
     ex.add_argument("--location-match", dest="location_match", choices=["yes", "no"])
     ex.add_argument("--since")
+    ex.add_argument("--comp-min", dest="comp_min",
+                    help="Only jobs whose posted range reaches this (e.g. 80k)")
     ex.add_argument("--all", action="store_true",
                     help="Include expired/rejected/ignored (hidden by default)")
     ex.set_defaults(func=cmd_export)

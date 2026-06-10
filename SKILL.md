@@ -231,6 +231,12 @@ Attempt in this order:
                search-indexed job means the req closed, not a bad slug). Verified 2026-06-04.
    Jobvite:    https://jobs.jobvite.com/[slug]/jobs  (readable). Verified 2026-06-04: Uplight, Exabeam/LogRhythm.
    Workable v3: https://apply.workable.com/api/v3/accounts/[slug]/jobs  (paged via nextPage token; complements the v1 widget GET above).
+   SmartRecruiters: https://api.smartrecruiters.com/v1/companies/[slug]/postings  (GET; totalFound + content[].name/location;
+               paginate with ?limit=100&offset=N). GOTCHA (verified 2026-06-10): it answers 200 + totalFound:0 for ANY
+               unknown company name, so an empty result proves NOTHING about whether the company is on SmartRecruiters.
+   BambooHR:   https://[slug].bamboohr.com/careers/list  (GET; result[].jobOpeningName + location/isRemote; job URL
+               https://[slug].bamboohr.com/careers/[id]; the public list carries no posting date)
+   Recruitee:  https://[slug].recruitee.com/api/offers/  (GET; offers[].title/location/careers_url/created_at)
    ```
    **Phenom-portal / gated-Workday employers:** some large enterprises route through a Phenom branded portal (jobs.[company].com)
    or a Workday tenant whose CXS endpoint bot-blocks (HTTP 422/403), no clean public JSON. Verify on the branded careers page
@@ -248,16 +254,27 @@ Attempt in this order:
    `createdAt` (Lever, epoch ms) and Greenhouse `updated_at` give the posting date for 4d.
    If `api.lever.co` 404s for a slug, the org is on the EU instance, use `api.eu.lever.co`.
 
-   **Periodic fresh-scan sweep (catch NEW roles at companies already in the DB):** for a
-   re-scan, script a sweep that hits every tracked company's JSON feed (Greenhouse/Lever/Ashby
-   GET, Workday CXS POST), diffs incoming titles against the stored `dedup_key`s, and keeps
-   only NET-NEW roles passing the level + function + location filters, far cheaper than
-   re-fetching pages, and the feed location is already 4c-authoritative. Filter lessons
-   (verified 2026-06-03): exclude over-leveled titles
+   **Periodic fresh-scan sweep (catch NEW roles at companies already in the DB): use
+   `sweep.py`.** The sweep is now a script, not a hand-run procedure:
+   ```
+   python sweep.py --candidate <slug> --out job_scans/YYYY-MM-DD_sweep-draft.json --report <path>
+   ```
+   It hits every `feed_verified` company's JSON feed (Greenhouse/Lever US+EU/Ashby/Workable/
+   Rippling/SmartRecruiters/BambooHR/Recruitee GET, Workday CXS POST with pagination), applies
+   the level + exclusion + keyword + location filters from the candidate record
+   (`seniority_filter`, `exclusions`, categories, location constraint), and diffs against
+   stored dedup_keys of EVERY status (so ignored/applied/expired roles are never re-proposed).
+   Output: a draft batch of net-new roles (verification_tag=verified, tier=null, the agent
+   reviews/tiers it, then `upsert-batch`), ready-to-run `mark --verified` lines for stored
+   roles seen in their feed, expiry candidates for roles absent from a fully-pulled feed
+   (Workday absences get an individual CXS detail GET instead, 200=live/404=gone), comp
+   backfill commands when a feed shows a range the DB lacks, and an ambiguous-location list
+   ("2 Locations" Workday rows) for manual checks. The script never writes the DB.
+   Filter lessons it encodes (verified 2026-06-03): exclude over-leveled titles
    (`senior|sr|staff|principal|lead|manager|director|III|IV|postdoctoral`), and require an
    explicit **US token** for any "remote" or foreign-remote (e.g. Turkey/Mexico) leaks in as a
-   false location match. A feed returning **0** vs. **erroring** are different, log the HTTP
-   status so a dead feed reads as a blind spot, not an empty result.
+   false location match. A feed returning **0** vs. **erroring** are different, the report logs
+   HTTP status per company so a dead feed reads as a blind spot, not an empty result.
    **ATS feeds drift, re-check slugs each sweep:** companies change platform on
    acquisition/region move (e.g. a US Lever org migrating to EU Lever, or a Greenhouse board
    token changing after an acquisition). When a feed 404s, find the new board rather than
@@ -327,10 +344,21 @@ Attempt in this order:
    assuming it matches a stored URL slug. Watch for renames/acquisitions (a lab or division
    can change names while keeping the same Workday tenant, so the dedup_key tenant is stable
    even when the careersite path moves). The genuine exception is true **federal civilian**
-   roles (e.g. NIST), which do post on **USAJOBS.gov** (citizenship gate, slow). Many
+   roles (NIST Boulder, NOAA Boulder, etc.), which post on **USAJOBS.gov** (citizenship
+   gate, slow, hard application-close dates). **Helper: `python usajobs.py "<keyword>"
+   --location Colorado [--org "<agency>"] [--remote]`** sweeps the official USAJOBS Search
+   API (presence = live + authoritative location, satisfies 4c/4d; per-role GS grade and
+   salary band included). One-time setup: free API key from developer.usajobs.gov, exported
+   as USAJOBS_API_KEY + USAJOBS_EMAIL (the script prints instructions when unset). Many
    defense/space lab roles carry a clearance/citizenship gate, capture it as a screening risk.
    (Worked CO-lab examples, NLR/NREL, NCAR/UCAR, SwRI, LASP, are in
    `examples/quantum-field-notes.md`.)
+
+   **New-grad/early-career candidates: also sweep the stage-specific sources** (see the
+   "New Grad / Early Career" section of `domain-boards.md`). Helper:
+   `python simplify_jobs.py "<keyword>" --state <ST> [--days N]` pulls the SimplifyJobs
+   New-Grad list (community-curated, direct ATS links, foreign-remote guarded). Aggregator
+   discovery: verify each kept role on its ATS URL per Phase 4 before tiering.
 
    **Big-tech embedded-data boards (Google, etc.):** some large employers run no public
    ATS feed at all, Google's careers site is JS-rendered and its legacy JSON API

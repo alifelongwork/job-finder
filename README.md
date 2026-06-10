@@ -34,9 +34,11 @@ their own:
 | Part | Needs Claude Code? | Notes |
 |------|--------------------|-------|
 | Discovering companies for your profile, multi-source search, deciding fit / location / tier, writing tailored resumes & cover letters | **Yes** | This is the agent's work. The `*.md` files are instructions *for the LLM*, not runnable code. |
-| `jobsdb.py` - store / query / dedup / export your pipeline, `company verify`, stats | **No** | Pure Python 3 (stdlib `sqlite3`), **zero network**. Works fully offline. |
-| `ats_probe.py` - resolve a company's ATS feed & list its open roles | **No** | Stdlib `urllib`, **no API keys**. Real web fetch without Claude. |
-| `google_careers.py` - read Google's careers board | **No** | Stdlib `urllib`, no keys. |
+| `jobsdb.py` - store / query / dedup / export your pipeline, `company verify`, stats, audit, follow-up tracking | **No** | Pure Python 3 (stdlib `sqlite3`), **zero network**. Works fully offline. |
+| `sweep.py` - re-scan every verified company feed: confirm/expire stored roles, draft net-new ones, backfill salary ranges | **No** | Stdlib `urllib`, no keys. The fast path for keeping the pipeline fresh. |
+| `ats_probe.py` - resolve a company's ATS feed & list its open roles (9 platforms) | **No** | Stdlib `urllib`, **no API keys**. Real web fetch without Claude. |
+| `google_careers.py` / `amazon_jobs.py` / `simplify_jobs.py` - big-tech boards + the SimplifyJobs new-grad list | **No** | Stdlib `urllib`, no keys. |
+| `usajobs.py` - federal roles (NIST, NOAA, ...) via the official USAJOBS API | **No** | Stdlib `urllib`; needs a **free** USAJOBS API key (the script explains the 2-minute signup). |
 
 So: **Claude Code does the open-ended *searching* and the *reasoning*; the CLI/helpers do the
 deterministic fetching and all the data management.** A person could run the CLI and helper
@@ -161,10 +163,14 @@ Each person runs **their own** `jobs.db`. Two ways to share this with friends:
 
 These run anytime with just Python making it useful for inspecting your pipeline or checking a company:
 ```bash
-python jobsdb.py stats --candidate <you>            # pipeline summary
+python jobsdb.py stats --candidate <you>            # pipeline summary + category yield + comp coverage
 python jobsdb.py query --candidate <you> --tier 1   # your Tier-1 roles
+python jobsdb.py followups --candidate <you>        # outreach + follow-ups due
+python jobsdb.py audit --candidate <you>            # duplicate / rule-violation check
 python jobsdb.py company show --like acme           # is a company tracked?
+python sweep.py --candidate <you>                   # re-scan every verified company feed
 python ats_probe.py "Acme Robotics"                 # find a company's live ATS feed
+python simplify_jobs.py "software" --state CO       # new-grad roles (SimplifyJobs list)
 python test_jobsdb.py                               # self-test (throwaway DB)
 ```
 See **[database.md](database.md)** for the full CLI.
@@ -182,8 +188,11 @@ See **[database.md](database.md)** for the full CLI.
 | `linkedin-outreach.md` | Contact search for Tier 1 roles |
 | `database.md` | The DB schema + `jobsdb.py` CLI contract |
 | `jobsdb.py` | The pipeline CLI (stdlib only), single source of truth for the job list |
-| `ats_probe.py` | Resolves a company's ATS hiring feed (company-level verification helper) |
-| `google_careers.py` | Reads Google's embedded-data careers board |
+| `sweep.py` | Automated feed sweep: re-verify stored roles + draft net-new ones across all verified companies |
+| `ats_probe.py` | Resolves a company's ATS hiring feed across 9 platforms (company-level verification helper) |
+| `google_careers.py` / `amazon_jobs.py` | Big-tech boards with no standard ATS |
+| `simplify_jobs.py` | New-grad/early-career discovery (SimplifyJobs list, direct ATS links) |
+| `usajobs.py` | Federal roles via the official USAJOBS API (free key) |
 | `test_jobsdb.py` | Regression suite (`python test_jobsdb.py`, throwaway DB) |
 | `examples/` | Worked candidate profiles + a sample company map |
 

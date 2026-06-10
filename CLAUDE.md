@@ -23,8 +23,11 @@ must never violate.
    `onboarding-questionnaire.md` (captures citizenship, clearance, location, comp,
    targeting, facts not in a resume), then register. For returning candidates, confirm
    stored values rather than re-asking.
-2. **Re-verify** existing pipeline: `jobsdb.py reverify list`, then re-check URLs and `mark`
-   dead ones expired.
+2. **Re-verify + re-discover** the existing pipeline: prefer
+   `python sweep.py --candidate <slug> --out job_scans/<date>_sweep-draft.json` (sweeps
+   every feed-verified company, confirms/expires stored roles, drafts net-new ones for
+   review + upsert). Fall back to `jobsdb.py reverify list` + manual URL re-checks for
+   roles its feeds don't cover.
 3. **Build the company list, then search** per `SKILL.md`. First derive + verify the target
    companies (Phase 2): resolve each company's hiring feed with `python ats_probe.py "<name>"`
    and record it on the company row via `jobsdb.py company verify` (check what's already
@@ -36,6 +39,9 @@ must never violate.
 5. **Present from the DB** (`query` / `stats`): do not generate a job-list document.
 6. **Per-role on request**: `resume-tailor.md` and `cover-letter.md` → write `.docx` into
    `candidates/<slug>/`, record the path with `jobsdb.py mark`.
+7. **Track the funnel**: `jobsdb.py followups` (outreach + follow-ups due),
+   `contact mark` (outreach sent), `mark --status interviewing/offer --followed-up`
+   (post-application stages), `jobsdb.py audit` (dedup/integrity check).
 
 ## Hard rules (never break)
 - Every stored job needs a `dedup_key` and a `verification_tag`: dedup is what stops

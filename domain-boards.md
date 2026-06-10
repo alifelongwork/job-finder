@@ -69,6 +69,37 @@ site:wellfound.com "[role title]" "[city]"
 
 ---
 
+## New Grad / Early Career (stage-specific, any domain)
+
+These sources are keyed to career STAGE rather than domain: for a new-grad or
+early-career candidate they out-signal every domain board above, because large-company
+new-grad reqs are batch-posted and vanish fast.
+
+- **SimplifyJobs New-Grad-Positions** (GitHub): the single best new-grad SWE list,
+  community-updated continuously, each listing links directly to the company ATS posting,
+  dead roles are flagged. **Helper: `python simplify_jobs.py "[keyword]" --state <ST>
+  [--days N]`** pulls the machine-readable list and filters by state + US-remote (with
+  the foreign-remote guard). Aggregator discovery: verify each kept role on its ATS URL
+  per Phase 4 before tiering.
+- **SimplifyJobs Summer20XX-Internships** (GitHub): same repo family, for internships.
+- **Handshake**: university-gated; employers target schools directly, so competition per
+  posting is far lower than public boards. The candidate logs in with their school account
+  (can't be swept from here, remind them to check it).
+- **RippleMatch**: ripplematch.com, new-grad/early-career matching; candidate-side signup.
+- **Untapped**: untapped.io, early-career + diversity-focused postings.
+- **Company "university recruiting" / "early careers" program pages**: large employers
+  post new-grad cohorts under a separate program page (e.g. `careers.[company].com/students`
+  or "University Recruiting" job families) that generic title searches miss.
+
+Sweep keyword pass (works on any ATS feed or aggregator):
+```
+"new grad" OR "new graduate" OR "university grad" "[year]" "[domain]"
+"early career" OR "entry level" "software engineer" "[city OR remote]"
+site:job-boards.greenhouse.io "new grad" "[year]"
+```
+
+---
+
 ## Healthcare / Health-IT / Clinical
 
 - **Health eCareers**: healthecareers.com; **HealthcareSource**; **Nurse.com** (nursing)

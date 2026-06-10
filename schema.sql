@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS candidates (
     clearance           TEXT,
     comp_floor          INTEGER,
     comp_target         INTEGER,
+    -- Structured screens (jobsdb.py _migrate() adds these to pre-existing DBs):
+    seniority_filter    TEXT,               -- regex for titles the candidate is NOT targeting
+    exclusions          TEXT,               -- comma-separated industry/term blocklist (word-boundary matched)
     resume_path         TEXT,
     notes               TEXT,
     created_at          TEXT NOT NULL,
@@ -64,11 +67,13 @@ CREATE TABLE IF NOT EXISTS jobs (
     category_label    TEXT,
     fit_summary       TEXT,
     screening_risks   TEXT,
-    status            TEXT NOT NULL DEFAULT 'new',  -- new|active|applied|expired|rejected|ignored
+    status            TEXT NOT NULL DEFAULT 'new',  -- new|active|applied|interviewing|offer|expired|rejected|ignored
     first_seen        TEXT NOT NULL,
     last_seen         TEXT NOT NULL,
     last_verified     TEXT,
     applied_date      TEXT,
+    last_followup     TEXT,                  -- ISO date of last post-application follow-up
+
     resume_path       TEXT,
     cover_letter_path TEXT,
     notes             TEXT,
@@ -89,7 +94,9 @@ CREATE TABLE IF NOT EXISTS contacts (
     hook         TEXT,
     action       TEXT,
     confirmed    INTEGER NOT NULL DEFAULT 0,
-    notes        TEXT
+    notes        TEXT,
+    contacted_date TEXT,                     -- ISO date outreach was sent
+    response       TEXT                      -- what came back
 );
 
 CREATE TABLE IF NOT EXISTS search_runs (

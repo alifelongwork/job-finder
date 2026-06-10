@@ -75,9 +75,18 @@ Persist the confirmed brief so it survives across sessions and is reusable by fr
 python jobsdb.py candidate add --resume <path> --slug <slug> \
   --field name="..." --field email="..." --field location_constraint="..." \
   --field citizenship="..." --field clearance="..." \
-  --field comp_floor=80000 --field comp_target=...
+  --field comp_floor=80000 --field comp_target=... \
+  --field seniority_filter="(?i)\b(senior|sr|staff|principal|...)\b" \
+  --field exclusions="gambling, crypto, adtech"
 python jobsdb.py category set --candidate <slug> --json <categories.json>
 ```
+
+`seniority_filter` (a regex of title words the candidate is NOT targeting; over-level
+terms for an early-career candidate, junior terms for a senior one) and `exclusions`
+(comma-separated industry blocklist from the questionnaire) are structured screens:
+`sweep.py` filters with them automatically and `upsert-batch` warns when a Tier 1/2
+role trips one. Derive both from the onboarding answers instead of leaving them only
+in notes.
 
 The **ranked category list** is what drives which searches run and in what priority order.
 Each candidate defines their own based on their resume and goals (e.g. a SWE might rank
@@ -109,9 +118,20 @@ results to the database.
 This runs automatically when the person shares their resume. Do not wait to be asked.
 
 **Part 0, Re-verify the existing pipeline first (if the candidate already has jobs):**
-- Run `python jobsdb.py reverify list --candidate <slug> --stale-days 7`
-- Re-fetch each stale job's URL; record outcomes with `jobsdb.py mark` (set `--verified`
-  for live ones, `--status expired` for dead ones). This clears ghosts before the new run.
+- **Preferred: run the feed sweep**, it re-verifies and discovers in one pass:
+  `python sweep.py --candidate <slug> --out job_scans/YYYY-MM-DD_sweep-draft.json`
+  It confirms stored roles still live in their ATS feeds (run its printed
+  `mark ... --verified` line), flags expiry candidates (confirm, then run the printed
+  `mark ... --status expired` line), surfaces comp backfills, and drafts net-new roles
+  for review (assign tier/fit per role, then `upsert-batch` the draft). See SKILL.md
+  Phase 3a for what it covers; companies without a verified feed still need the manual
+  path below.
+- For roles its feeds don't cover: `python jobsdb.py reverify list --candidate <slug>
+  --stale-days 7`, re-fetch each stale job's URL, record outcomes with `jobsdb.py mark`
+  (`--verified` for live ones, `--status expired` for dead ones). This clears ghosts
+  before the new run.
+- Run `python jobsdb.py audit --candidate <slug>` occasionally: it flags duplicate
+  dedup_keys and hard-rule violations with suggested fixes.
 
 **Part 1, Job search:**
 - Read `SKILL.md` and `domain-boards.md`
@@ -135,6 +155,11 @@ This runs automatically when the person shares their resume. Do not wait to be a
   Each returns live roles with authoritative location. This counts as 3a company-surface
   verification (skip 3b–3f for that company). Flag over-leveled roles as level risk and store
   out-of-location roles `wrong_location` per the usual 4c gate.
+- **Stage/source helpers:** for new-grad/early-career candidates,
+  `python simplify_jobs.py "<keyword>" --state <ST>` (SimplifyJobs list, direct ATS links,
+  aggregator: still verify per Phase 4); for federal employers (NIST/NOAA etc.),
+  `python usajobs.py "<keyword>" --location <State>` (official API, needs a free key, see
+  the script header; presence = live + authoritative location).
 - **Every role must pass Phase 4 before being tiered:**
   - 4a/4b: anchor today's date, verify the URL is live via the three-step fallback
   - **4c: location match (MANDATORY HARD GATE)**: pull location directly from the
@@ -222,14 +247,22 @@ For each role:
 
 After Steps 2–3 are complete for a role, confirm the submission sequence:
 
-1. Outreach messages sent
+1. Outreach messages sent, then record them: `jobsdb.py contact mark <contact_id>
+   --contacted [--response "..."]` (find ids with `jobsdb.py contact list`)
 2. Any referrals activated
 3. Resume ready (path recorded in DB)
 4. Cover letter ready (path recorded in DB)
 5. **Re-verify posting is still live on the company's careers page AND location is unchanged**
 6. Apply through the company portal
 7. Mark it applied: `jobsdb.py mark <job_id> --status applied --applied-date <ISO>`
-8. Follow up with contacts after applying
+8. Follow up with contacts after applying; record each touch with
+   `jobsdb.py mark <job_id> --followed-up`
+
+**Track the funnel afterward.** `python jobsdb.py followups --candidate <slug>` lists
+what is due: Tier 1 contacts never contacted (outreach goes before applying) and
+applied/interviewing jobs untouched for 5+ days. Progress a job with
+`mark <id> --status interviewing` / `--status offer` (both survive re-scans, like
+`applied`).
 
 ---
 

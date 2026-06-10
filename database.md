@@ -24,6 +24,8 @@ document as a substitute for storing the job.
 | clearance | TEXT | e.g. "previously held TS, eligible for reinstatement" |
 | comp_floor | INTEGER | annual USD, nullable |
 | comp_target | INTEGER | annual USD, nullable |
+| seniority_filter | TEXT | regex for titles the candidate is NOT targeting (over-level, intern, etc.); consumed by `sweep.py`, warned on by `upsert-batch` for Tier 1/2 |
+| exclusions | TEXT | comma-separated industry/term blocklist, matched on word boundaries (so `crypto` does not hit "cryptography") |
 | resume_path | TEXT | path to base resume |
 | notes | TEXT | |
 | created_at / updated_at | TEXT | ISO 8601 |
@@ -61,9 +63,11 @@ Global (not candidate-scoped), under one-DB-per-person each user has their own.
 | last_verified | TEXT | ISO date the company's hiring surface was last checked |
 | open_roles | INTEGER | open-role count from the last `ats_probe` (nullable; NULL = unknown) |
 
-> These three columns are added to a **pre-existing** `jobs.db` automatically: `jobsdb.py`'s
-> `connect()` runs an idempotent `_migrate()` (ALTER TABLE guarded by `PRAGMA table_info`),
-> since `init` skips a populated DB. Fresh DBs get them from `schema.sql`.
+> Post-1.0 columns (these three, plus `candidates.seniority_filter`/`exclusions`,
+> `jobs.last_followup`, and `contacts.contacted_date`/`response`) are added to a
+> **pre-existing** `jobs.db` automatically: `jobsdb.py`'s `connect()` runs an idempotent
+> `_migrate()` (ALTER TABLE guarded by `PRAGMA table_info`), since `init` skips a
+> populated DB. Fresh DBs get them from `schema.sql`.
 
 ### `jobs`: one row per posting (the core table)
 | Column | Type | Notes |
@@ -86,11 +90,12 @@ Global (not candidate-scoped), under one-DB-per-person each user has their own.
 | category_label | TEXT | which `candidate_categories.label` bucket |
 | fit_summary | TEXT | "why it fits" |
 | screening_risks | TEXT | |
-| status | TEXT | new \| active \| applied \| expired \| rejected \| ignored (default `new`) |
+| status | TEXT | new \| active \| applied \| interviewing \| offer \| expired \| rejected \| ignored (default `new`) |
 | first_seen | TEXT | ISO date the row was first inserted |
 | last_seen | TEXT | ISO date last surfaced by a search |
 | last_verified | TEXT | ISO date the URL was last confirmed live |
 | applied_date | TEXT | nullable |
+| last_followup | TEXT | ISO date of the last post-application follow-up (set via `mark --followed-up`; drives `followups`) |
 | resume_path | TEXT | tailored resume .docx, set via `mark` |
 | cover_letter_path | TEXT | cover letter .docx, set via `mark` |
 | notes | TEXT | |
@@ -109,6 +114,8 @@ Global (not candidate-scoped), under one-DB-per-person each user has their own.
 | action | TEXT | recommended action |
 | confirmed | INTEGER | 0/1, name actually confirmed vs. type only |
 | notes | TEXT | |
+| contacted_date | TEXT | ISO date outreach was sent (set via `contact mark`; survives re-scans) |
+| response | TEXT | what came back (reply / referral / no answer) |
 
 ### `search_runs`: log of each search (for stats/history)
 | Column | Type | Notes |
@@ -180,15 +187,22 @@ python jobsdb.py company rename --from <old> --to <new> [--careers-url --ats-slu
 python jobsdb.py upsert-batch <job_scans/YYYY-MM-DD[_label].json>
     Insert new jobs / update existing ones for one candidate in a single transaction.
     Returns a summary: {found, new, updated}. Logs a search_runs row. (Expirations are
-    handled separately by `reverify`/`mark`, not by upsert, see below.)
+    handled separately by `reverify`/`mark`, not by upsert, see below.) After the
+    summary it prints structured-screen WARNINGs: a Tier 1/2 title matching the
+    candidate's seniority_filter (LEVEL), a company/title hitting an exclusion term
+    (EXCLUSION), or a Tier 1/2 range topping out below comp_floor (COMP). Warnings are
+    informational, the rows still store; the agent decides.
     Convention: write each scan's batch file into the `job_scans/` folder, named
     `YYYY-MM-DD.json` (add a short `_label` suffix if you run more than one scan in a day,
     e.g. `2026-05-31_quantum.json`). These files are the dated audit trail of every scan.
 
 python jobsdb.py query [filters...]
     --candidate <slug>   --category <substring>   --tier 1|2|3
-    --status new|active|applied|expired|rejected|ignored   --verification verified|...
-    --location-match yes|no   --since <ISO date>   --limit N   --all   --format table|json
+    --status new|active|applied|interviewing|offer|expired|rejected|ignored
+    --verification verified|...   --location-match yes|no   --since <ISO date>
+    --comp-min <80k|80000>   --limit N   --all   --format table|json
+    --comp-min keeps only jobs whose posted range reaches that figure (jobs with no
+    comp data are excluded: it answers "which postings PROVE the floor").
     By default shows only the live/actionable pipeline (new/active/applied); expired,
     rejected, and ignored are hidden. Pass --all to include them, or --status <x> to
     target one explicitly.
@@ -197,7 +211,26 @@ python jobsdb.py query [filters...]
     never); a trailing `!` flags never-verified or >7 days old, re-verify before applying.
 
 python jobsdb.py stats --candidate <slug>
-    Pipeline breakdown: counts by tier, status, verification_tag, location-match.
+    Pipeline breakdown: counts by tier, status, verification_tag, location-match, plus
+    a category-yield table (Tier 1/2/3 per category_label, the signal for re-ranking
+    categories) and comp coverage (how many live roles carry a posted range; how many
+    fall below the candidate's comp_floor).
+
+python jobsdb.py audit --candidate <slug>
+    Report-only integrity checks: dedup_keys equal modulo a trailing -N suffix (the
+    Workday instance-suffix trap), same company+title under different keys, and
+    hard-rule violations (Tier 1/2 without location_match / with wrong_location /
+    without a url). Prints suggested `mark` fix commands; changes nothing itself.
+
+python jobsdb.py followups --candidate <slug> [--days 5] [--format json]
+    What outreach/follow-up is due: (1) live Tier 1 roles whose stored contacts were
+    never contacted (outreach goes BEFORE applying), (2) applied/interviewing jobs with
+    no touch (application or follow-up) in --days days.
+
+python jobsdb.py contact list --candidate <slug> [--job ID]
+python jobsdb.py contact mark <contact_id> [--contacted [ISO]] [--response "..."]
+    Outreach tracking on stored contacts. `--contacted` without a date means today.
+    Outreach state survives re-scans (the upsert carries it over when contacts refresh).
 
 python jobsdb.py reverify list --candidate <slug> [--stale-days 2]
     Emit live (new/active) jobs due for re-verification: last_verified older than
@@ -209,10 +242,13 @@ python jobsdb.py reverify list --candidate <slug> [--stale-days 2]
     resume/cover work, per those skills' Phase 0). Pass --stale-days 0 to force a full
     re-check of every live role.
 
-python jobsdb.py mark <job_id> [--status ...] [--verified] [--resume <path>]
-    [--cover <path>] [--applied-date <ISO>] [--note "..."]
-    Update one job: status transition, refresh last_verified (--verified), attach
-    generated document paths, log notes.
+python jobsdb.py mark <job_id> [<job_id> ...] [--status ...] [--verified]
+    [--resume <path>] [--cover <path>] [--applied-date <ISO>]
+    [--comp-min <95k>] [--comp-max <120k>] [--followed-up] [--note "..."]
+    Update one or MORE jobs (multiple ids apply the same change to each, the bulk path
+    sweep.py's confirmed-live/expire output uses): status transition, refresh
+    last_verified (--verified), attach document paths, backfill a posted comp range,
+    record a post-application follow-up (--followed-up), log notes.
 
 python jobsdb.py export --candidate <slug> [query filters] --format csv|md|xlsx|docx|all [--out <path>]
     Optional. Generate a report snapshot FROM the DB (not the source of truth).
@@ -306,8 +342,13 @@ Match each incoming job on `(candidate_id, dedup_key)`:
   were never company-confirmed, so they stay due for re-verification).
 - **Match exists** → UPDATE `last_seen = run_date` and refresh metadata (tier, tag,
   location, comp, fit, posting_date). Refresh `last_verified` if newly verified.
-  - **Preserve terminal status:** if existing `status` is `applied`, `ignored`, or
-    `rejected`, do NOT change it. Only update metadata + `last_seen`.
+  - **Preserve terminal status:** if existing `status` is `applied`, `interviewing`,
+    `offer`, `ignored`, or `rejected`, do NOT change it. Only update metadata +
+    `last_seen`. (This is also why `sweep.py` diffs net-new roles against keys of EVERY
+    status: an ignored/applied/expired role must never be re-proposed as new.)
+  - **Preserve outreach state on contacts:** replacing a job's contacts carries over
+    `contacted_date`/`response` to the incoming contact with the same name (or, failing
+    that, the same contact_type), so a re-scan never erases that outreach happened.
   - A `new` job re-surfaced by any scan becomes `active` (it's been seen again). An
     `expired` job is revived to `active` **only** when it comes back with the `verified`
     tag, a mere `aggregator`/`unverified` re-sighting does not resurrect a dead posting.

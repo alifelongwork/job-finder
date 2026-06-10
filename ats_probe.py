@@ -2,8 +2,9 @@
 """ats_probe.py — resolve a company's ATS hiring feed (company-level verification helper).
 
 The company-level analog of confirming a single job is live. Given a company name, this
-tries the known public ATS JSON feeds (Greenhouse, Lever US+EU, Ashby, Workable, Rippling;
-Workday is opt-in) for a set of candidate slugs and reports which platform/slug resolved,
+tries the known public ATS JSON feeds (Greenhouse, Lever US+EU, Ashby, Workable, Rippling,
+SmartRecruiters, BambooHR, Recruitee; Workday is opt-in) for a set of candidate slugs and
+reports which platform/slug resolved,
 how many open roles it lists, and a few sample titles/locations. Stdlib only (urllib) —
 modeled on google_careers.py. It NEVER writes the database: run it, eyeball the result,
 then record the outcome with `python jobsdb.py company verify ...` (this prints a
@@ -155,6 +156,38 @@ def parse_rippling(j):
             "samples": _samples(jobs, ("name", "title"), loc, ("url", "jobUrl"))}
 
 
+def parse_smartrecruiters(j):
+    jobs = j.get("content", []) if isinstance(j, dict) else []
+    total = j.get("totalFound") if isinstance(j, dict) else None
+    def loc(it):
+        l = it.get("location") or {}
+        return ", ".join(x for x in (l.get("city"), l.get("region"), l.get("country")) if x)
+    return {"count": total if isinstance(total, int) else len(jobs),
+            "samples": _samples(jobs, ("name",), loc, ("ref",))}
+
+
+def parse_bamboohr(j):
+    jobs = j.get("result", []) if isinstance(j, dict) else []
+    def loc(it):
+        l = it.get("location") or {}
+        if isinstance(l, dict):
+            base = ", ".join(x for x in (l.get("city"), l.get("state")) if x)
+        else:
+            base = str(l or "")
+        return (base + (" (remote)" if it.get("isRemote") else "")) or None
+    return {"count": len(jobs),
+            "samples": _samples(jobs, ("jobOpeningName", "title"), loc, ("url",))}
+
+
+def parse_recruitee(j):
+    jobs = j.get("offers", []) if isinstance(j, dict) else []
+    return {"count": len(jobs),
+            "samples": _samples(jobs, ("title",),
+                                lambda it: it.get("location") or ", ".join(
+                                    x for x in (it.get("city"), it.get("country")) if x),
+                                ("careers_url", "url"))}
+
+
 def parse_workday(j):
     posts = j.get("jobPostings", []) if isinstance(j, dict) else []
     total = j.get("total") if isinstance(j, dict) else None
@@ -172,7 +205,17 @@ PLATFORMS = [
     ("ashby",      "https://api.ashbyhq.com/posting-api/job-board/{slug}",    parse_ashby),
     ("workable",   "https://apply.workable.com/api/v1/widget/accounts/{slug}", parse_workable),
     ("rippling",   "https://api.rippling.com/platform/api/ats/v1/board/{slug}/jobs", parse_rippling),
+    ("smartrecruiters", "https://api.smartrecruiters.com/v1/companies/{slug}/postings",
+     parse_smartrecruiters),
+    ("bamboohr",   "https://{slug}.bamboohr.com/careers/list",                parse_bamboohr),
+    ("recruitee",  "https://{slug}.recruitee.com/api/offers/",                parse_recruitee),
 ]
+
+
+# Platforms where the slug is the HOSTNAME: an unresolvable domain there is a clean
+# miss (the company isn't on that ATS), not an inconclusive network error.
+HOST_BASED = {"bamboohr", "recruitee"}
+_DNS_FAIL = ("getaddrinfo", "name or service", "nodename", "no address")
 
 
 def probe_slug(slug, timeout, only=None):
@@ -186,9 +229,21 @@ def probe_slug(slug, timeout, only=None):
             continue  # US Lever already resolved; skip the EU fallback
         url = tmpl.format(slug=urllib.parse.quote(slug, safe=""))
         result, code, payload, err = _request(url, timeout)
+        if (result == "error" and name in HOST_BASED
+                and any(s in (err or "").lower() for s in _DNS_FAIL)):
+            result, err = "miss", None
         att = {"platform": name, "slug": slug, "url": url,
                "result": "hit" if result == "ok" else result,
                "http": code, "count": 0, "samples": [], "error": err}
+        if result == "ok" and name == "smartrecruiters":
+            # SmartRecruiters answers 200 + totalFound:0 for ANY name (verified
+            # 2026-06-10), so an empty result proves nothing — treat as a miss.
+            # (Cost: a real SR company with temporarily 0 postings reads as a miss.)
+            norm = parse(payload)
+            if norm["count"] == 0:
+                att["result"] = "miss"
+                attempts.append(att)
+                continue
         if result == "ok":
             norm = parse(payload)
             att["count"], att["samples"] = norm["count"], norm["samples"]

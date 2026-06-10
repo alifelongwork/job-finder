@@ -440,6 +440,11 @@ _c.executescript("""
         careers_url TEXT, ats_platform TEXT, ats_slug TEXT,
         multi_region INTEGER NOT NULL DEFAULT 0, warm_path TEXT, notes TEXT);
     INSERT INTO companies (name, careers_url) VALUES ('OldRow Co', 'https://oldrow.example');
+    CREATE TABLE candidates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL, email TEXT, location_constraint TEXT, citizenship TEXT,
+        clearance TEXT, comp_floor INTEGER, comp_target INTEGER, resume_path TEXT,
+        notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 """)
 _c.commit()
 _c.close()
@@ -454,9 +459,12 @@ subprocess.run([sys.executable, JOBSDB, "company", "verify", "OldRow Co",
                capture_output=True, text=True, encoding="utf-8", check=True)
 _m = sqlite3.connect(TMPDB2); _m.row_factory = sqlite3.Row
 mig_cols = {r["name"] for r in _m.execute("PRAGMA table_info(companies)")}
+cand_cols = {r["name"] for r in _m.execute("PRAGMA table_info(candidates)")}
 old = _m.execute("SELECT * FROM companies WHERE name='OldRow Co'").fetchone()
 _m.close()
 check("migration added new columns to existing DB", NEW_COLS <= mig_cols, mig_cols)
+check("migration added candidate screen columns",
+      {"seniority_filter", "exclusions"} <= cand_cols, cand_cols)
 check("migration preserved pre-existing row data",
       old and old["careers_url"] == "https://oldrow.example", old["careers_url"] if old else None)
 check("verify worked on the just-migrated DB",
@@ -466,6 +474,155 @@ try:
         os.remove(TMPDB2)
 except OSError:
     pass  # temp file; OS will reclaim it
+
+print("== structured screens (seniority_filter / exclusions) ==")
+run("candidate", "add", "--slug", "screens", "--field", "name=Screens User",
+    "--field", r"seniority_filter=(?i)\b(senior|staff|principal)\b",
+    "--field", "exclusions=crypto, gambling")
+srow = db().execute("SELECT * FROM candidates WHERE slug='screens'").fetchone()
+check("seniority_filter stored", (srow["seniority_filter"] or "").startswith("(?i)"),
+      srow["seniority_filter"])
+check("exclusions stored", srow["exclusions"] == "crypto, gambling", srow["exclusions"])
+shw = run("candidate", "show", "--slug", "screens").stdout
+check("show displays screen fields", "seniority_filter" in shw and "exclusions" in shw)
+bad = run("candidate", "add", "--slug", "screens", "--field", "seniority_filter=([bad",
+          expect_ok=False)
+check("invalid seniority_filter regex rejected",
+      "valid regex" in (bad.stdout + bad.stderr))
+
+screens_batch = write_json("screens_batch.json", {
+    "candidate": "screens", "run_date": "2026-06-01", "jobs": [
+        {"company": "Crypto Exchange Inc", "title": "Software Engineer", "dedup_key": "scr:1",
+         "verification_tag": "verified", "tier": 2, "location_match": True},
+        {"company": "NiceCo", "title": "Senior Software Engineer", "dedup_key": "scr:2",
+         "verification_tag": "verified", "tier": 1, "location_match": True},
+        {"company": "NiceCo", "title": "Cryptography Engineer", "dedup_key": "scr:3",
+         "verification_tag": "verified", "tier": 2, "location_match": True},
+        {"company": "NiceCo", "title": "Software Engineer II", "dedup_key": "scr:4",
+         "verification_tag": "verified", "tier": 2, "location_match": True},
+    ]})
+r = run("upsert-batch", screens_batch)
+check("EXCLUSION warning on excluded company", "EXCLUSION" in r.stdout
+      and "Crypto Exchange Inc" in r.stdout, r.stdout)
+check("LEVEL warning on tier-1/2 over-level title", "LEVEL" in r.stdout
+      and "Senior Software Engineer" in r.stdout, r.stdout)
+check("word-boundary: 'cryptography' NOT flagged by 'crypto'",
+      r.stdout.count("EXCLUSION") == 1, r.stdout)
+check("clean role produces no warning", r.stdout.count("WARNING") == 2, r.stdout)
+
+print("== comp floor / filters ==")
+run("candidate", "add", "--slug", "screens", "--field", "comp_floor=90k")
+comp_batch = write_json("comp_batch.json", {
+    "candidate": "screens", "run_date": "2026-06-02", "jobs": [
+        {"company": "LowBall Inc", "title": "Software Engineer", "dedup_key": "cmp:1",
+         "verification_tag": "verified", "tier": 1, "location_match": True,
+         "comp_min": 55000, "comp_max": 70000},
+        {"company": "FairPay Inc", "title": "Software Engineer", "dedup_key": "cmp:2",
+         "verification_tag": "verified", "tier": 2, "location_match": True,
+         "comp_min": 110000, "comp_max": 140000},
+    ]})
+r = run("upsert-batch", comp_batch)
+check("COMP warning on below-floor tier-1", "COMP" in r.stdout
+      and "LowBall" in r.stdout, r.stdout)
+check("no COMP warning above floor", "FairPay" not in r.stdout or
+      r.stdout.count("COMP") == 1, r.stdout)
+q = run("query", "--candidate", "screens", "--comp-min", "100k", "--format", "json")
+qj = json.loads(q.stdout)
+check("--comp-min keeps only ranges reaching it",
+      len(qj) == 1 and qj[0]["comp_min"] == 110000, [x.get("comp_min") for x in qj])
+cmp_id = db().execute("SELECT id FROM jobs WHERE dedup_key='cmp:1'").fetchone()["id"]
+run("mark", str(cmp_id), "--comp-min", "95k", "--comp-max", "120k")
+cr = db().execute("SELECT comp_min, comp_max FROM jobs WHERE dedup_key='cmp:1'").fetchone()
+check("mark --comp-min/--comp-max backfills (k-suffix parsed)",
+      cr["comp_min"] == 95000 and cr["comp_max"] == 120000, dict(cr))
+sout = run("stats", "--candidate", "screens").stdout
+check("stats reports comp coverage + below-floor", "comp data:" in sout
+      and "floor" in sout, sout)
+check("stats reports category yield", "category yield" in sout
+      and "(uncategorized)" in sout, sout)
+
+print("== mark multi-id ==")
+mids = [str(x["id"]) for x in db().execute(
+    "SELECT id FROM jobs WHERE dedup_key IN ('scr:3','scr:4') ORDER BY id")]
+run("mark", *mids, "--verified")
+mrows = db().execute(
+    "SELECT last_verified, status FROM jobs WHERE dedup_key IN ('scr:3','scr:4')").fetchall()
+check("multi-id mark verified all targets",
+      all(x["last_verified"] for x in mrows), [dict(x) for x in mrows])
+check("multi-id mark transitioned new->active",
+      all(x["status"] == "active" for x in mrows), [dict(x) for x in mrows])
+
+print("== lifecycle: interviewing/offer, followups, contact outreach ==")
+lc_batch = write_json("lc_batch.json", {
+    "candidate": "screens", "run_date": "2026-06-03", "jobs": [
+        {"company": "FunnelCo", "title": "Software Engineer, Platform", "dedup_key": "lc:1",
+         "verification_tag": "verified", "tier": 1, "location_match": True,
+         "contacts": [{"name": "Pat Recruiter", "title": "Recruiter",
+                       "contact_type": "recruiter", "priority": "★★★", "confirmed": 1}]},
+    ]})
+run("upsert-batch", lc_batch)
+lc_id = db().execute("SELECT id FROM jobs WHERE dedup_key='lc:1'").fetchone()["id"]
+
+fu = run("followups", "--candidate", "screens").stdout
+check("followups surfaces un-contacted Tier 1 contact",
+      "Pat Recruiter" in fu and "FunnelCo" in fu, fu)
+ct_id = db().execute("SELECT id FROM contacts WHERE name='Pat Recruiter'").fetchone()["id"]
+run("contact", "mark", str(ct_id), "--contacted", "2026-06-04", "--response", "replied, will refer")
+cl = run("contact", "list", "--candidate", "screens", "--job", str(lc_id)).stdout
+check("contact list shows outreach state", "contacted 2026-06-04" in cl
+      and "replied, will refer" in cl, cl)
+fu2 = run("followups", "--candidate", "screens").stdout
+check("contacted contact drops off outreach-due", "Pat Recruiter" not in fu2, fu2)
+
+run("upsert-batch", lc_batch)  # re-scan re-sends the same contacts
+ctr = db().execute("SELECT contacted_date, response FROM contacts WHERE name='Pat Recruiter'").fetchone()
+check("re-upsert preserves outreach state (contacted_date)",
+      ctr["contacted_date"] == "2026-06-04", dict(ctr))
+check("re-upsert preserves outreach state (response)",
+      ctr["response"] == "replied, will refer", dict(ctr))
+
+run("mark", str(lc_id), "--status", "applied", "--applied-date", "2026-05-20")
+fu3 = run("followups", "--candidate", "screens", "--days", "5").stdout
+check("applied job overdue surfaces in followups", "FunnelCo" in fu3
+      and "follow-up" in fu3, fu3)
+run("mark", str(lc_id), "--followed-up")
+fu4 = run("followups", "--candidate", "screens", "--days", "5").stdout
+check("followed-up today drops off the due list",
+      "last touch" not in fu4 or "FunnelCo" not in fu4.split("follow-up")[-1], fu4)
+lfu = db().execute("SELECT last_followup FROM jobs WHERE id=?", (lc_id,)).fetchone()
+check("mark --followed-up stamps last_followup", bool(lfu["last_followup"]), dict(lfu))
+
+run("mark", str(lc_id), "--status", "interviewing")
+run("upsert-batch", lc_batch)  # re-scan must NOT clobber interviewing
+lst = db().execute("SELECT status FROM jobs WHERE id=?", (lc_id,)).fetchone()["status"]
+check("interviewing preserved across re-upsert", lst == "interviewing", lst)
+ofr = run("mark", str(lc_id), "--status", "offer")
+check("offer is a valid status", "status=offer" in ofr.stdout, ofr.stdout)
+
+print("== audit ==")
+aud_batch = write_json("aud_batch.json", {
+    "candidate": "screens", "run_date": "2026-06-05", "jobs": [
+        {"company": "DupeCo", "title": "Systems Engineer", "dedup_key": "workday:dupeco:r100",
+         "verification_tag": "verified", "tier": 3, "location_match": True, "url": "http://x/1"},
+        {"company": "DupeCo", "title": "Systems Engineer", "dedup_key": "workday:dupeco:r100-1",
+         "verification_tag": "verified", "tier": 3, "location_match": True, "url": "http://x/2"},
+        {"company": "BadTier Inc", "title": "Platform Engineer", "dedup_key": "bad:1",
+         "verification_tag": "wrong_location", "tier": 2, "location_match": False,
+         "url": "http://x/3"},
+    ]})
+run("upsert-batch", aud_batch)
+aud = run("audit", "--candidate", "screens").stdout
+check("audit flags suffix dupe with fix command",
+      "workday:dupeco:r100" in aud and "--status ignored" in aud, aud)
+check("audit flags Tier-2 wrong_location hard-rule violation",
+      "wrong_location with Tier 1/2" in aud and "BadTier" in aud, aud)
+check("audit flags tier without location_match",
+      "without location_match" in aud, aud)
+dupe_id = db().execute("SELECT id FROM jobs WHERE dedup_key='workday:dupeco:r100-1'").fetchone()["id"]
+run("mark", str(dupe_id), "--status", "ignored", "--note", "duplicate (audit)")
+aud2 = run("audit", "--candidate", "screens").stdout
+check("resolved suffix dupe drops out of audit",
+      "workday:dupeco:r100" not in aud2, aud2)
 
 print("== ats_probe.py (offline) ==")
 import ats_probe

@@ -144,6 +144,55 @@ Legend: ☐ todo · ◐ in progress · ☑ done
 - ☑ 7 export assertions added to test_jobsdb.py: **63/63 total pass**
 - ☑ Query filter logic refactored into shared `job_filter_clause()` (DRY: query + export)
 
+### Step 6: Scope & automation expansion (2026-06-10)  ☑
+Built from a feature-gap review against the candidate profile (entry-level, quantum-first,
+CO/remote, comp floor). All tested live against the real pipeline the same day.
+- ☑ **`sweep.py`**: the periodic fresh-scan sweep as a script (was agent prose). Sweeps all
+  feed_verified companies (8 GET platforms + Workday CXS with pagination/keyword fallback),
+  applies candidate-driven level/exclusion/keyword/location filters, diffs against stored
+  dedup_keys of every status, emits: net-new draft batch (agent reviews + tiers + upserts),
+  bulk `mark --verified` confirmations, expiry candidates (Workday absences re-checked via
+  per-role detail GET, never auto-expired on list absence), comp backfills, ambiguous
+  multi-location list. Read-only on the DB. First runs: 56 companies, ~6,100 roles fetched,
+  10 net-new (7 kept), 139 confirmations, 3 expirations, 46 comp backfills.
+- ☑ **Structured screens**: `candidates.seniority_filter` (regex) + `candidates.exclusions`
+  (word-boundary terms; `crypto` does not hit "cryptography"). Consumed by sweep.py;
+  `upsert-batch` warns on Tier 1/2 violations (LEVEL/EXCLUSION/COMP). `_migrate()`
+  generalized to per-table migrations.
+- ☑ **New-grad sources**: `simplify_jobs.py` (SimplifyJobs New-Grad list, direct ATS links,
+  foreign-remote guard) + a stage-specific "New Grad / Early Career" section in
+  domain-boards.md (Handshake, RippleMatch, Untapped, program pages).
+- ☑ **Comp capture**: sweep parses Lever salaryRange / Ashby compensationTierSummary /
+  Greenhouse pay_input_ranges + JD-body $-range regex (hourly-looking matches skipped);
+  `query/export --comp-min`; `mark --comp-min/--comp-max` backfill; stats shows comp
+  coverage + below-floor count. Live comp coverage went 11 -> 58 roles in one sweep.
+- ☑ **Lifecycle tracking**: statuses `interviewing`/`offer` (preserved on upsert like
+  `applied`); `jobs.last_followup` + `mark --followed-up`; `followups` command (un-contacted
+  Tier 1 contacts + applied/interviewing jobs gone quiet); `contacts.contacted_date/response`
+  + `contact list`/`contact mark`; contact replacement on re-scan carries outreach state over.
+- ☑ **ats_probe expansion**: SmartRecruiters / BambooHR / Recruitee probes (9 platforms
+  total) + matching sweep fetchers. Gotchas encoded: SmartRecruiters answers 200+empty for
+  ANY name (0-count = miss); host-based NXDOMAIN = clean miss. Re-probe of the 34 non-feed
+  companies upgraded 3 for real (Mesa Quantum/workable, Sysdig/lever, Visa/smartrecruiters)
+  and caught 4 slug collisions by eyeballing samples (ashby:quantum, lever:blue,
+  greenhouse:icarus, greenhouse:octave are all different companies).
+- ☑ **Federal coverage**: `usajobs.py` (official USAJOBS Search API; free key via
+  developer.usajobs.gov, env USAJOBS_API_KEY/USAJOBS_EMAIL; prints setup when unset; the
+  live-API path is untested until a key is registered). NIST (Boulder) + NOAA (Boulder)
+  registered as careers_only monitors.
+- ☑ **`audit` command**: suffix-dupe detection (found + fixed the two pre-rule Sierra Space
+  r25500/r25615 dupes), same-company+title advisories, hard-rule violation checks
+  (Tier 1/2 vs location_match/url). Report-only.
+- ☑ **Category yield in stats**: Tier 1/2/3 per category over the actionable pipeline.
+  First read: General SWE/AI yields the most Tier 1s (11/57), quantum rank-1 ties on Tier 1
+  but carries the wrong-location tail; cybersecurity (rank 4) yields least.
+- ☑ `mark` accepts multiple job ids (the sweep's bulk confirm/expire path).
+- ☑ Regression suite extended 110 -> 141 assertions, all passing.
+
+**Sweep cadence:** run `sweep.py` at the start of any session (Project_Instructions Part 0).
+For unattended freshness, schedule it (Windows Task Scheduler or a Claude Code scheduled
+job) daily; it is read-only, so an unreviewed run costs nothing, the draft just waits.
+
 ---
 
 ## Key design decisions (locked)

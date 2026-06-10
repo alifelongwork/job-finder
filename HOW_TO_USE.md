@@ -68,6 +68,7 @@ Once you're set up, the normal rhythm is:
 | **Cover letter** | "Write a cover letter for job 3" | A specific, non-generic cover letter `.docx`. |
 | **Apply** | (you apply on the company site) |, |
 | **Track** | "Mark job 3 as applied" | Claude records it so it never shows up as "new" again. |
+| **Follow up** | "What's due for follow-up?" | Claude lists contacts you haven't messaged yet and applications going quiet, and records each touch. |
 
 You can run a search as often as you like. **Re-running never creates duplicates**, it
 updates what's there and only adds genuinely new postings. Jobs you've already applied to
@@ -106,17 +107,41 @@ python jobsdb.py query --candidate me --status applied     # what you've applied
 python jobsdb.py stats --candidate me
 ```
 
-**Mark progress on a job (use the id from `query`):**
+**Mark progress on a job (use the id from `query`; several ids at once is fine):**
 ```
 python jobsdb.py mark 3 --status applied        # you applied
+python jobsdb.py mark 3 --status interviewing   # you got an interview
+python jobsdb.py mark 3 --status offer          # you got an offer!
 python jobsdb.py mark 3 --status ignored        # not interested, hide it
 python jobsdb.py mark 3 --status expired        # posting is gone
+python jobsdb.py mark 3 --followed-up           # you pinged them after applying
 python jobsdb.py mark 3 --note "recruiter emailed me"
 ```
 
-**Find postings that should be re-checked for freshness:**
+**See what outreach / follow-up is due, and log it:**
+```
+python jobsdb.py followups --candidate me       # who to message + what's gone quiet
+python jobsdb.py contact list --candidate me    # your stored contacts + outreach state
+python jobsdb.py contact mark 5 --contacted --response "replied, will refer me"
+```
+
+**Refresh everything in one pass (the sweep):**
+```
+python sweep.py --candidate me --out job_scans/2026-06-15_sweep-draft.json
+```
+This checks every tracked company's live job feed in a few minutes: it confirms which of
+your saved roles are still posted, flags ones that disappeared, picks up posted salary
+ranges, and drafts any new matching roles for review. Claude runs this at the start of a
+session; you can also run it yourself (or ask Claude to schedule it daily).
+
+**Find postings that should be re-checked for freshness (roles the sweep can't reach):**
 ```
 python jobsdb.py reverify list --candidate me
+```
+
+**Health-check the database:**
+```
+python jobsdb.py audit --candidate me           # finds duplicates + rule violations
 ```
 
 **Look up or check a company:**
@@ -129,7 +154,7 @@ You can also just ask Claude "is \<company\> actually hiring, and what's their c
 , it resolves the company's job feed and records the result so future searches hit it directly.
 
 **Statuses you'll see:** `new` (just found) · `active` (confirmed still live) · `applied` ·
-`expired` (gone) · `rejected` · `ignored` (you hid it).
+`interviewing` · `offer` · `expired` (gone) · `rejected` · `ignored` (you hid it).
 
 ---
 
