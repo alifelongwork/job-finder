@@ -743,6 +743,8 @@ def sweep(args):
 
     for co in companies:
         platform = (co.get("ats_platform") or "").lower()
+        if platform == "lever-eu":  # EU-Lever host; the `lever` fetcher already probes api.eu.lever.co
+            platform = "lever"      # normalize so dispatch works AND dedup keys stay canonical (lever:...)
         slug = co.get("ats_slug") or ""
         if platform == "workday":
             target, why = workday_target(co)
