@@ -189,12 +189,42 @@ See **[database.md](database.md)** for the full CLI.
 | `database.md` | The DB schema + `jobsdb.py` CLI contract |
 | `jobsdb.py` | The pipeline CLI (stdlib only), single source of truth for the job list |
 | `sweep.py` | Automated feed sweep: re-verify stored roles + draft net-new ones across all verified companies |
+| `discover.py` | Location-driven company discovery: bootstraps the company list for a fresh candidate by harvesting location-scoped sources, then confirms each feed (the discovery half `sweep.py` doesn't do) |
+| `companies_seed/` | Checked-in, reset-proof company baseline by region and sector (so a DB rebuild re-inherits the curated universe) |
 | `ats_probe.py` | Resolves a company's ATS hiring feed across 9 platforms (company-level verification helper) |
 | `google_careers.py` / `amazon_jobs.py` | Big-tech boards with no standard ATS |
 | `simplify_jobs.py` | New-grad/early-career discovery (SimplifyJobs list, direct ATS links) |
 | `usajobs.py` | Federal roles via the official USAJOBS API (free key) |
 | `test_jobsdb.py` | Regression suite (`python test_jobsdb.py`, throwaway DB) |
 | `examples/` | Worked candidate profiles + a sample company map |
+
+## Changelog
+
+Major additions are logged here, newest first. Routine fixes and doc tweaks live in the git
+history; this section calls out the features worth knowing about.
+
+### 2026-06-25 - company discovery + EU-Lever sweep fix
+
+**Added**
+- **Location-driven company discovery (`discover.py`).** Bootstraps the company database for a
+  fresh candidate from their location plus ranked categories: it harvests location-scoped
+  sources (the SimplifyJobs list, USAJOBS for citizens, best-effort Built In, and an
+  accumulating `companies_seed/` library), extracts each employer and any ATS apply link,
+  confirms the hiring feed via `ats_probe`, and writes a reviewable company batch. This is the
+  discovery half that `sweep.py` does not do (the sweep only re-checks companies already
+  tracked). A name-guessed feed is recorded only as a flagged lead, never trusted blindly, to
+  avoid attaching the wrong company's board.
+- **`jobsdb.py company verify-batch`.** Idempotent bulk company registration from a discovery
+  batch: it never downgrades a stronger verification status and never overwrites a company's
+  identity. Adds `region` and `discovery_source` columns to the companies table.
+- **`companies_seed/` baseline.** A checked-in, reset-proof library of target companies by
+  region and sector, so rebuilding the database re-inherits the curated company universe
+  instead of losing it.
+
+**Fixed**
+- **EU-Lever feeds are no longer skipped by the sweep.** Store EU-based Lever companies (such
+  as Quantinuum) with platform `lever` rather than `lever-eu`; the Lever fetcher already probes
+  the EU host, and the old `lever-eu` value made `sweep.py` silently skip the entire feed.
 
 ## Notes
 
