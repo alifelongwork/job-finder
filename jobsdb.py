@@ -60,6 +60,8 @@ MIGRATIONS = {
         ("verification_status", "TEXT"),
         ("last_verified", "TEXT"),
         ("open_roles", "INTEGER"),
+        ("region", "TEXT"),            # discovery scoping hint (e.g. 'Colorado') — NOT a hard filter
+        ("discovery_source", "TEXT"),  # how the company entered the DB: simplify|usajobs|builtin|seed|manual
     ],
     "candidates": [
         ("seniority_filter", "TEXT"),   # regex: titles the candidate is NOT targeting
@@ -1408,6 +1410,77 @@ def cmd_company_verify(args):
           f"status={args.status}, last_verified={updates['last_verified']}{roles}.")
 
 
+# Confidence ranking of verification states, strongest first. verify-batch never lets a
+# later, weaker outcome overwrite a stronger one (a failed re-probe must not erase a known
+# feed); an equal-or-stronger outcome does write (so careers_only -> feed_verified upgrades).
+VERIFY_RANK = {"feed_verified": 3, "careers_only": 2, "unresolved": 1, "unverified": 0}
+
+
+def cmd_company_verify_batch(args):
+    """Bulk company verification from a discovery batch (company_scans/*.json) — the company
+    analog of upsert-batch. Idempotent: re-running registers 0 new and never clobbers identity
+    (feed/slug fill blanks only, via upsert_company) or downgrades a stronger verification
+    status. The discovery orchestrator (discover.py) emits this file; this command lands it."""
+    with open(args.file, encoding="utf-8") as f:
+        batch = json.load(f)
+    run_date = batch.get("run_date") or today()
+    conn = connect()
+    get_candidate(conn, batch["candidate"])  # validate the candidate slug exists
+    created = updated = skipped_downgrade = 0
+    for co in batch.get("companies", []):
+        name = co.get("name")
+        if not name:
+            sys.exit("A company entry is missing the required field 'name'.")
+        status = co.get("verification_status")
+        if status not in COMPANY_VERIFY_STATUS:
+            sys.exit(f"Company '{name}' has invalid verification_status '{status}' "
+                     f"(must be one of: {', '.join(sorted(COMPANY_VERIFY_STATUS))}).")
+        existing = _company_by_name(conn, name)
+        # upsert_company fills identity/feed blanks without clobbering and flips multi_region on.
+        cid = upsert_company(conn, {
+            "company": name,
+            "careers_url": co.get("careers_url"),
+            "ats_platform": co.get("ats_platform"),
+            "ats_slug": co.get("ats_slug"),
+            "multi_region": co.get("multi_region"),
+        })
+        updates = {}
+        # Never auto-downgrade: only write status if it is at least as strong as what's stored.
+        prev_status = existing["verification_status"] if existing else None
+        if VERIFY_RANK.get(status, 0) >= VERIFY_RANK.get(prev_status, -1):
+            updates["verification_status"] = status
+        else:
+            skipped_downgrade += 1
+        # last_verified only ever moves forward (guard against a back-dated batch).
+        prev_ver = existing["last_verified"] if existing else None
+        updates["last_verified"] = max(prev_ver, run_date) if prev_ver else run_date
+        if co.get("open_roles") is not None:
+            updates["open_roles"] = co["open_roles"]
+        if co.get("region"):
+            updates["region"] = co["region"]
+        if co.get("discovery_source"):
+            updates["discovery_source"] = co["discovery_source"]
+        if co.get("note"):  # append a dated line rather than overwrite
+            row = conn.execute("SELECT notes FROM companies WHERE id=?", (cid,)).fetchone()
+            prev = (row["notes"] + "\n") if row["notes"] else ""
+            updates["notes"] = prev + f"[{run_date}] {co['note']}"
+        conn.execute(f"UPDATE companies SET {', '.join(f'{k}=?' for k in updates)} WHERE id=?",
+                     [*updates.values(), cid])
+        if existing:
+            updated += 1
+        else:
+            created += 1
+    conn.commit()
+    conn.close()
+    found = created + updated
+    print(json.dumps({"found": found, "created": created, "updated": updated,
+                      "skipped_downgrade": skipped_downgrade}))
+    print(f"Verified {found} compan{'y' if found == 1 else 'ies'} for "
+          f"'{batch['candidate']}': {created} new, {updated} updated"
+          + (f", {skipped_downgrade} status-downgrade(s) skipped" if skipped_downgrade else "")
+          + ".")
+
+
 # ---------------------------------------------------------------------------
 # arg parsing
 # ---------------------------------------------------------------------------
@@ -1458,6 +1531,10 @@ def build_parser():
     cvf.add_argument("--careers-url", dest="careers_url")
     cvf.add_argument("--note", help="Append a dated note line")
     cvf.set_defaults(func=cmd_company_verify)
+    cvb = cosub.add_parser("verify-batch",
+                           help="Bulk-register companies from a discovery batch (company_scans/*.json)")
+    cvb.add_argument("file")
+    cvb.set_defaults(func=cmd_company_verify_batch)
     cad = cosub.add_parser("add", help="Register a target-list company (no job needed)")
     cad.add_argument("--name", required=True)
     cad.add_argument("--careers-url", dest="careers_url")

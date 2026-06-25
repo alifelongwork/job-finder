@@ -117,7 +117,17 @@ results to the database.
 
 This runs automatically when the person shares their resume. Do not wait to be asked.
 
-**Part 0, Re-verify the existing pipeline first (if the candidate already has jobs):**
+**Part 0a, Bootstrap the company list for a NEW candidate (empty pipeline):**
+- `sweep.py` only re-checks companies already `feed_verified` in the DB — it never discovers
+  new companies. So for a fresh candidate, first build the company universe by location:
+  `python discover.py --candidate <slug> --out company_scans/YYYY-MM-DD_discovery.json`
+  (harvests location-scoped sources + the `companies_seed/` library, confirms feeds, emits a
+  batch). Review `needs_review` rows + act on any `GAP:` notice (agent research pass → write
+  the seed file → re-run `--source seed`), then
+  `python jobsdb.py company verify-batch <file>` to register. See SKILL.md Phase 2 Step 2a-bis.
+  Then run the sweep (Part 0b) over the now-populated `feed_verified` companies.
+
+**Part 0b, Re-verify the existing pipeline first (if the candidate already has jobs):**
 - **Preferred: run the feed sweep**, it re-verifies and discovers in one pass:
   `python sweep.py --candidate <slug> --out job_scans/YYYY-MM-DD_sweep-draft.json`
   It confirms stored roles still live in their ATS feeds (run its printed

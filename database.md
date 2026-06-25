@@ -62,6 +62,8 @@ Global (not candidate-scoped), under one-DB-per-person each user has their own.
 | verification_status | TEXT | feed_verified \| careers_only \| unresolved \| unverified, company-level verification, set via `company verify` (the analog of a job's `verification_tag`) |
 | last_verified | TEXT | ISO date the company's hiring surface was last checked |
 | open_roles | INTEGER | open-role count from the last `ats_probe` (nullable; NULL = unknown) |
+| region | TEXT | discovery scoping hint (e.g. `Colorado`) set by `discover.py`; NOT a hard filter — sweep still does the per-role location match |
+| discovery_source | TEXT | how the company entered the DB: `simplify` \| `usajobs` \| `builtin` \| `seed` \| `manual` (set by `company verify-batch`) |
 
 > Post-1.0 columns (these three, plus `candidates.seniority_filter`/`exclusions`,
 > `jobs.last_followup`, and `contacts.contacted_date`/`response`) are added to a
@@ -183,6 +185,15 @@ python jobsdb.py company verify <name> --status feed_verified|careers_only|unres
 python jobsdb.py company rename --from <old> --to <new> [--careers-url --ats-slug]
     Rename a company in place, or MERGE into the target if the new name already exists
     (repoints jobs, folds in missing fields, drops the duplicate row).
+python jobsdb.py company verify-batch <company_scans/YYYY-MM-DD_discovery.json>
+    Bulk company verification from a discovery batch (the company analog of upsert-batch;
+    emitted by `discover.py`). Idempotent: re-running creates 0 new and never clobbers
+    identity (feed/slug fill blanks only) or downgrades a stronger verification status
+    (rank feed_verified > careers_only > unresolved > unverified; equal-or-stronger writes,
+    so careers_only -> feed_verified upgrades). last_verified only moves forward; `note`
+    appends a dated line. Batch shape: `{candidate, run_date, companies:[{name,
+    verification_status, ats_platform?, ats_slug?, careers_url?, open_roles?, multi_region?,
+    region?, discovery_source?, note?}]}`. Prints `{found, created, updated, skipped_downgrade}`.
 
 python jobsdb.py upsert-batch <job_scans/YYYY-MM-DD[_label].json>
     Insert new jobs / update existing ones for one candidate in a single transaction.

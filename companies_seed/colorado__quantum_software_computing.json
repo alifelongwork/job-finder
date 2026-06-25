@@ -1,0 +1,170 @@
+{
+  "region": "Colorado",
+  "sector": "Quantum software/computing",
+  "last_refreshed": "2026-06-25",
+  "source": "seeded from unified jobs.db (144-company baseline)",
+  "companies": [
+    {
+      "name": "1QBit",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workable",
+      "hint_slug": "1qbit",
+      "careers_url": "https://1qbit.com/careers/"
+    },
+    {
+      "name": "Aliro Quantum",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.aliroquantum.com/careers-aliro"
+    },
+    {
+      "name": "Atom Computing",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "atomcomputing",
+      "careers_url": "https://jobs.lever.co/atomcomputing"
+    },
+    {
+      "name": "Classiq",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.classiq.io/careers"
+    },
+    {
+      "name": "D-Wave Quantum",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "rippling",
+      "hint_slug": "d-wave-quantum",
+      "careers_url": "https://www.dwavequantum.com/company/careers/"
+    },
+    {
+      "name": "Icarus Quantum",
+      "source": "db-baseline-2026-06-25"
+    },
+    {
+      "name": "Infleqtion",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workable",
+      "hint_slug": "infleqtion",
+      "careers_url": "https://infleqtion.com/careers/"
+    },
+    {
+      "name": "IonQ",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "ionq",
+      "careers_url": "https://job-boards.greenhouse.io/ionq"
+    },
+    {
+      "name": "Maybell Quantum",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "maybellquantum",
+      "careers_url": "https://job-boards.greenhouse.io/maybellquantum"
+    },
+    {
+      "name": "Mesa Quantum",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workable",
+      "hint_slug": "mesa-quantum-systems",
+      "careers_url": "https://apply.workable.com/mesa-quantum-systems/"
+    },
+    {
+      "name": "Oxford Ionics",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workable",
+      "hint_slug": "oxford-ionics",
+      "careers_url": "https://apply.workable.com/oxford-ionics/"
+    },
+    {
+      "name": "Pasqal",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workable",
+      "hint_slug": "pasqal",
+      "careers_url": "https://www.pasqal.com/careers/"
+    },
+    {
+      "name": "PsiQuantum",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "psiquantum",
+      "careers_url": "https://www.psiquantum.com/careers"
+    },
+    {
+      "name": "Q-CTRL",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://q-ctrl.com/careers"
+    },
+    {
+      "name": "qBraid",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.qbraid.com/careers"
+    },
+    {
+      "name": "QC Ware",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.qcware.com/careers"
+    },
+    {
+      "name": "Quantinuum",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "quantinuum",
+      "careers_url": "https://www.quantinuum.com/company/careers"
+    },
+    {
+      "name": "Quantum Computing Inc",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://quantumcomputinginc.com/company/careers"
+    },
+    {
+      "name": "Quantum Machines",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.quantum-machines.co/careers/"
+    },
+    {
+      "name": "Quantum Rings",
+      "source": "db-baseline-2026-06-25"
+    },
+    {
+      "name": "QuEra Computing",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "queracomputinginc",
+      "careers_url": "https://job-boards.greenhouse.io/queracomputinginc"
+    },
+    {
+      "name": "Rigetti Computing",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "rigetti",
+      "careers_url": "https://jobs.lever.co/rigetti"
+    },
+    {
+      "name": "Riverlane",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "riverlane",
+      "careers_url": "https://job-boards.eu.greenhouse.io/riverlane"
+    },
+    {
+      "name": "SandboxAQ",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "sandboxaq",
+      "careers_url": "https://jobs.ashbyhq.com/sandboxaq"
+    },
+    {
+      "name": "Strangeworks",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://strangeworks.com/careers"
+    },
+    {
+      "name": "Vapor Cell Technologies",
+      "source": "db-baseline-2026-06-25"
+    },
+    {
+      "name": "Xanadu",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.xanadu.ai/careers/"
+    }
+  ]
+}

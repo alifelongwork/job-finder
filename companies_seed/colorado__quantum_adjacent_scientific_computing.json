@@ -1,0 +1,284 @@
+{
+  "region": "Colorado",
+  "sector": "Quantum-adjacent / scientific computing",
+  "last_refreshed": "2026-06-25",
+  "source": "seeded from unified jobs.db (144-company baseline)",
+  "companies": [
+    {
+      "name": "Albedo",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "albedo",
+      "careers_url": "https://boards.greenhouse.io/albedo"
+    },
+    {
+      "name": "Anaconda",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "rippling",
+      "hint_slug": "anaconda",
+      "careers_url": "https://www.anaconda.com/about-us/careers/jobs"
+    },
+    {
+      "name": "Anduril Industries",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "andurilindustries",
+      "careers_url": "https://job-boards.greenhouse.io/andurilindustries"
+    },
+    {
+      "name": "Astroscale US",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "bamboohr",
+      "hint_slug": "astroscale",
+      "careers_url": "https://astroscale.bamboohr.com/careers"
+    },
+    {
+      "name": "BAE Systems Space & Mission Systems",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "careers_url": "https://jobs.baesystems.com/global/en/space-and-mission-systems"
+    },
+    {
+      "name": "Beyond Photonics",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://beyondphotonics.com/company/"
+    },
+    {
+      "name": "Blue Canyon Technologies (RTX)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "other",
+      "careers_url": "https://www.bluecanyontech.com/careers/"
+    },
+    {
+      "name": "Boom Supersonic",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "rippling",
+      "hint_slug": "boom-supersonic",
+      "careers_url": "https://ats.rippling.com/boom-supersonic/jobs"
+    },
+    {
+      "name": "Crusoe",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "Crusoe",
+      "careers_url": "https://jobs.ashbyhq.com/Crusoe"
+    },
+    {
+      "name": "Enthought",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "enthought",
+      "careers_url": "https://www.enthought.com/company/careers/"
+    },
+    {
+      "name": "FormFactor",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "careers_url": "https://www.formfactor.com/careers/"
+    },
+    {
+      "name": "Kayhan Space",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "kayhan",
+      "careers_url": "https://www.kayhan.space/careers"
+    },
+    {
+      "name": "Kitware",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "kitware",
+      "careers_url": "https://www.kitware.com/careers/"
+    },
+    {
+      "name": "KM Labs",
+      "source": "db-baseline-2026-06-25"
+    },
+    {
+      "name": "LASP (CU Boulder)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "jobs.colorado.edu",
+      "careers_url": "https://lasp.colorado.edu/careers/"
+    },
+    {
+      "name": "Lockheed Martin",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "careers_url": "https://www.lockheedmartin.com/en-us/careers/locations/colorado.html"
+    },
+    {
+      "name": "Loft Orbital",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "loftorbital",
+      "careers_url": "https://jobs.lever.co/loftorbital"
+    },
+    {
+      "name": "LongPath Technologies",
+      "source": "db-baseline-2026-06-25"
+    },
+    {
+      "name": "Maxar Technologies",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "careers_url": "https://www.maxar.com/careers"
+    },
+    {
+      "name": "Meadowlark Optics",
+      "source": "db-baseline-2026-06-25"
+    },
+    {
+      "name": "National Laboratory of the Rockies (NLR)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "nrel/NLR",
+      "careers_url": "https://nrel.wd5.myworkdayjobs.com/NLR"
+    },
+    {
+      "name": "NIST (Boulder Laboratories)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "usajobs",
+      "careers_url": "https://nist.usajobs.gov/"
+    },
+    {
+      "name": "nLIGHT",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "jobvite",
+      "hint_slug": "nlight",
+      "careers_url": "https://jobs.jobvite.com/nlight/jobs"
+    },
+    {
+      "name": "NOAA (Boulder - Global Systems Laboratory)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "usajobs",
+      "careers_url": "https://www.boulder.noaa.gov/outreach/careers/"
+    },
+    {
+      "name": "Northrop Grumman",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "ngc/Northrop_Grumman_External_Site",
+      "careers_url": "https://ngc.wd1.myworkdayjobs.com/Northrop_Grumman_External_Site"
+    },
+    {
+      "name": "Octave Photonics",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.octavephotonics.com/"
+    },
+    {
+      "name": "OEwaves",
+      "source": "db-baseline-2026-06-25"
+    },
+    {
+      "name": "Orbit Fab",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "rippling",
+      "hint_slug": "orbitfab",
+      "careers_url": "https://ats.rippling.com/orbitfab/jobs"
+    },
+    {
+      "name": "Quansight",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "quansight",
+      "careers_url": "https://job-boards.greenhouse.io/quansight"
+    },
+    {
+      "name": "SciTec",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workable",
+      "hint_slug": "scitec",
+      "careers_url": "https://apply.workable.com/scitec"
+    },
+    {
+      "name": "Sierra Nevada Corporation",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "snc/snc_external_career_site",
+      "careers_url": "https://snc.wd1.myworkdayjobs.com/snc_external_career_site"
+    },
+    {
+      "name": "Sierra Space",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "sierraspace/Sierra_Space_External_Career_Site",
+      "careers_url": "https://sierraspace.wd1.myworkdayjobs.com/Sierra_Space_External_Career_Site"
+    },
+    {
+      "name": "Slingshot Aerospace",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "slingshot",
+      "careers_url": "https://www.slingshot.space/careers"
+    },
+    {
+      "name": "SpaceNav",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.spacenav.com/careers"
+    },
+    {
+      "name": "SparkFun Electronics",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.sparkfun.com/careers"
+    },
+    {
+      "name": "SwRI",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "other",
+      "hint_slug": "swri",
+      "careers_url": "https://resapp.swri.org/ResApp/Job_Search.aspx"
+    },
+    {
+      "name": "Tech-X Corporation",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "other",
+      "careers_url": "https://txcorp.com/careers-at-tech-x/"
+    },
+    {
+      "name": "True Anomaly",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "trueanomalyinc",
+      "careers_url": "https://job-boards.greenhouse.io/trueanomalyinc"
+    },
+    {
+      "name": "UCAR / NSF NCAR",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "ucar/UCAR_Careers",
+      "careers_url": "https://ucar.wd5.myworkdayjobs.com/UCAR_Careers"
+    },
+    {
+      "name": "Ursa Major",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "ursamajor",
+      "careers_url": "https://ursamajor.com/careers/"
+    },
+    {
+      "name": "Vannevar Labs",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "vannevarlabs",
+      "careers_url": "https://job-boards.greenhouse.io/vannevarlabs"
+    },
+    {
+      "name": "Vescent",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://vescent.com/careers"
+    },
+    {
+      "name": "Voltron Data",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "voltrondata",
+      "careers_url": "https://voltrondata.com/careers"
+    },
+    {
+      "name": "York Space Systems",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.yorkspacesystems.com/careers"
+    }
+  ]
+}

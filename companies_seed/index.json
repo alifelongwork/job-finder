@@ -1,0 +1,20 @@
+{
+  "colorado__quantum_software_computing": {
+    "file": "colorado__quantum_software_computing.json",
+    "last_refreshed": "2026-06-25",
+    "source": "db-baseline",
+    "count": 27
+  },
+  "colorado__quantum_adjacent_scientific_computing": {
+    "file": "colorado__quantum_adjacent_scientific_computing.json",
+    "last_refreshed": "2026-06-25",
+    "source": "db-baseline",
+    "count": 44
+  },
+  "colorado__general_swe_ml": {
+    "file": "colorado__general_swe_ml.json",
+    "last_refreshed": "2026-06-25",
+    "source": "db-baseline",
+    "count": 73
+  }
+}

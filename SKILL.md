@@ -116,6 +116,34 @@ fixed list. Examples across fields:
 See `domain-boards.md` for board sources per domain, and `examples/it-sysadmin-profile.md`
 for a worked non-engineering example.
 
+### Step 2a-bis: Bootstrap the company list by location (`discover.py`)
+For a **fresh candidate with an empty/thin pipeline**, run the bulk location-driven
+discovery pass before hand-deriving companies — it is the recall-maximizing path that aims
+to capture *every* company hiring the candidate's categories in their location:
+
+```
+python discover.py --candidate <slug> --out company_scans/YYYY-MM-DD_discovery.json
+```
+
+`discover.py` reads the candidate's location + ranked categories (read-only), harvests
+location-scoped sources (SimplifyJobs, USAJOBS for citizens, best-effort Built In, the
+accumulating `companies_seed/` library; brittle LinkedIn/Indeed/Google degrade silently),
+extracts each unique employer + any ATS apply-link, confirms the feed via `ats_probe`, and
+writes a company batch. Then:
+1. **Review the draft**, especially rows flagged `needs_review` (a *guessed* slug that hit —
+   eyeball the sampled titles in the note to reject a wrong-company collision).
+2. **Act on any `GAP:` notice** it prints — a (region × sector) with no fresh seed file means
+   off-aggregator employers may be missed. Run an agent research pass (the `deep-research`
+   skill) to enumerate employers for that niche, write
+   `companies_seed/<region>__<sector>.json` (schema: `{region, sector, last_refreshed,
+   source, companies:[{name, hint_platform?, hint_slug?, careers_url?, source}]}`), then
+   re-run `discover.py --source seed`. The library is reused by future candidates in the niche.
+3. **Register**: `python jobsdb.py company verify-batch company_scans/YYYY-MM-DD_discovery.json`
+   (idempotent; never downgrades a stronger status or clobbers identity).
+
+This populates the verified company list in bulk; Step 2b below then fills gaps by hand for
+companies no source surfaced. Phase 3a (`sweep.py`) sweeps the `feed_verified` rows for live roles.
+
 ### Step 2b: Build Target Company List
 Search for companies in each category matching:
 - Location constraint (or remote-friendly)

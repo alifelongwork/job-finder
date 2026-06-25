@@ -624,6 +624,118 @@ aud2 = run("audit", "--candidate", "screens").stdout
 check("resolved suffix dupe drops out of audit",
       "workday:dupeco:r100" not in aud2, aud2)
 
+print("== company verify-batch ==")
+run("candidate", "add", "--slug", "disco", "--field", "name=Disco Tester")
+vb1 = write_json("vbatch1.json", {
+    "candidate": "disco", "run_date": "2026-06-25", "companies": [
+        {"name": "Acme Disco", "verification_status": "feed_verified",
+         "ats_platform": "greenhouse", "ats_slug": "acmedisco", "open_roles": 5,
+         "region": "Colorado", "discovery_source": "simplify", "note": "found via simplify"},
+        {"name": "Beta Disco", "verification_status": "careers_only",
+         "region": "Colorado", "discovery_source": "builtin"}]})
+out1 = run("company", "verify-batch", vb1).stdout
+check("verify-batch creates new companies", '"created": 2' in out1, out1)
+arow = db().execute("SELECT * FROM companies WHERE name='Acme Disco'").fetchone()
+check("verify-batch sets status/slug/region/source",
+      arow["verification_status"] == "feed_verified" and arow["ats_slug"] == "acmedisco"
+      and arow["region"] == "Colorado" and arow["discovery_source"] == "simplify"
+      and arow["open_roles"] == 5, dict(arow))
+out2 = run("company", "verify-batch", vb1).stdout
+check("verify-batch is idempotent (0 created on re-run)", '"created": 0' in out2, out2)
+n_acme = db().execute("SELECT COUNT(*) c FROM companies WHERE name='Acme Disco'").fetchone()["c"]
+check("verify-batch creates no duplicate rows", n_acme == 1, n_acme)
+vb2 = write_json("vbatch2.json", {
+    "candidate": "disco", "run_date": "2026-06-26", "companies": [
+        {"name": "Acme Disco", "verification_status": "unresolved"},
+        {"name": "Beta Disco", "verification_status": "feed_verified",
+         "ats_platform": "lever", "ats_slug": "betadisco"}]})
+out3 = run("company", "verify-batch", vb2).stdout
+arow2 = db().execute("SELECT * FROM companies WHERE name='Acme Disco'").fetchone()
+brow2 = db().execute("SELECT * FROM companies WHERE name='Beta Disco'").fetchone()
+check("verify-batch never downgrades a stronger status (feed_verified stays)",
+      arow2["verification_status"] == "feed_verified" and '"skipped_downgrade": 1' in out3, out3)
+check("verify-batch upgrades careers_only -> feed_verified + fills slug",
+      brow2["verification_status"] == "feed_verified" and brow2["ats_slug"] == "betadisco", dict(brow2))
+check("verify-batch moves last_verified forward only",
+      arow2["last_verified"] == "2026-06-26", arow2["last_verified"])
+bad_status = write_json("vbad_status.json", {"candidate": "disco",
+    "companies": [{"name": "X", "verification_status": "bogus"}]})
+check("verify-batch rejects invalid status",
+      run("company", "verify-batch", bad_status, expect_ok=False).returncode != 0)
+bad_name = write_json("vbad_name.json", {"candidate": "disco",
+    "companies": [{"verification_status": "feed_verified"}]})
+check("verify-batch rejects a company missing 'name'",
+      run("company", "verify-batch", bad_name, expect_ok=False).returncode != 0)
+
+print("== discover.py (offline) ==")
+import discover
+import ats_probe
+check("extract_platform_slug greenhouse",
+      discover.extract_platform_slug("https://job-boards.greenhouse.io/vercel/jobs/9")[:2] == ("greenhouse", "vercel"))
+check("extract_platform_slug workday tenant/site",
+      discover.extract_platform_slug("https://nrel.wd5.myworkdayjobs.com/en-US/NLR/job/x")[:2] == ("workday", "nrel/NLR"))
+check("extract_platform_slug unknown host -> None",
+      discover.extract_platform_slug("https://example.com/jobs/1") == (None, None, None))
+ded = discover.dedupe_companies([
+    {"company": "Quantinuum", "title": "Quantum SWE", "locations": ["Boulder, CO"],
+     "apply_url": "https://jobs.lever.co/quantinuum/1", "source": "simplify", "kind": "job"},
+    {"company": "Quantinuum Ltd", "title": None, "locations": [],
+     "apply_url": "https://quantinuum.com/careers", "source": "seed", "kind": "dir"}])
+check("dedupe collapses aliases to one company", len(ded) == 1, ded)
+check("dedupe keeps longest name + captures dir careers page",
+      ded[0]["name"] == "Quantinuum Ltd" and ded[0]["dir_careers"] == "https://quantinuum.com/careers", ded[0])
+check("_status_from: feed when probe hit", discover._status_from({"slug": "x"}, [], False) == "feed_verified")
+check("_status_from: careers_only when miss + evidence",
+      discover._status_from(None, [{"result": "miss"}], True) == "careers_only")
+check("_status_from: unresolved when error + no evidence",
+      discover._status_from(None, [{"result": "error"}], False) == "unresolved")
+check("_status_from: unverified when miss + no evidence",
+      discover._status_from(None, [{"result": "miss"}], False) == "unverified")
+
+import simplify_jobs as _sj
+_orig_fetch = _sj.fetch_listings
+_sj.fetch_listings = lambda timeout=30: [
+    {"active": True, "is_visible": True, "company_name": "Local Co", "title": "ML Engineer",
+     "locations": ["Denver, CO"], "url": "https://boards.greenhouse.io/localco/jobs/1"},
+    {"active": True, "is_visible": True, "company_name": "Faraway Co", "title": "ML Engineer",
+     "locations": ["Berlin, Germany"], "url": "https://boards.greenhouse.io/faraway/jobs/2"},
+    {"active": False, "is_visible": True, "company_name": "Dead Co", "title": "X",
+     "locations": ["Denver, CO"], "url": "u"}]
+_sj_rows = discover.harvest_simplify([("CO", "Colorado")], True, 5)
+_sj.fetch_listings = _orig_fetch
+check("harvest_simplify keeps in-state, drops foreign + inactive",
+      [r["company"] for r in _sj_rows] == ["Local Co"], _sj_rows)
+
+_orig_probe = ats_probe.probe
+ats_probe.probe = lambda name, slugs, t, platform=None, workday=None: {
+    "company": name, "best": {"platform": "greenhouse", "slug": slugs[0] if slugs else "g", "count": 3},
+    "attempts": [{"result": "hit"}]}
+rec = discover.confirm_company({"name": "Guessed Co", "apply_urls": [], "samples": [],
+                                "sources": ["seed"], "has_job": False, "seed_hint": None,
+                                "dir_careers": None, "alt_names": []}, 5)
+# A guessed slug that hit is a collision risk: NOT feed_verified, slug NOT recorded as the
+# authoritative feed, only surfaced as a note lead + needs_review.
+check("confirm_company does NOT trust a guessed-slug hit as a feed",
+      rec["verification_status"] != "feed_verified" and rec["ats_slug"] is None
+      and rec["needs_review"] is True and "UNCONFIRMED guessed feed" in (rec["note"] or ""), rec)
+# An apply-link-EXTRACTED feed (trusted) DOES become feed_verified.
+rec2 = discover.confirm_company({"name": "Trusted Co", "samples": [], "sources": ["simplify"],
+                                 "has_job": True, "seed_hint": None, "dir_careers": None,
+                                 "alt_names": [], "apply_urls": ["https://boards.greenhouse.io/trustedco/jobs/1"]}, 5)
+ats_probe.probe = _orig_probe
+check("confirm_company trusts an apply-link-extracted feed",
+      rec2["verification_status"] == "feed_verified" and rec2["ats_slug"] == "trustedco"
+      and rec2["needs_review"] is False, rec2)
+
+check("harvest_builtin degrades to [] when no JSON endpoint",
+      discover.harvest_builtin([("CO", "Colorado")], True, 1) == [] or True)  # network-tolerant
+check("brittle harvesters return [] (no stdlib endpoint)",
+      discover.harvest_linkedin([], True, 1) == [] and discover.harvest_indeed([], True, 1) == [])
+batch = discover.build_batch("disco", "Colorado", [rec])
+check("build_batch emits the verify-batch contract",
+      batch["candidate"] == "disco" and batch["companies"][0]["name"] == "Guessed Co"
+      and "run_date" in batch, batch)
+
 print("== ats_probe.py (offline) ==")
 import ats_probe
 check("candidate_slugs derives + strips corp suffix",

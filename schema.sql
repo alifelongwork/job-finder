@@ -44,7 +44,9 @@ CREATE TABLE IF NOT EXISTS companies (
     -- to pre-existing DBs). See COMPANY_VERIFY_STATUS in jobsdb.py.
     verification_status TEXT,                -- feed_verified|careers_only|unresolved|unverified
     last_verified       TEXT,                -- ISO date the company's hiring surface was last checked
-    open_roles          INTEGER              -- open-role count from the last probe (NULL = unknown)
+    open_roles          INTEGER,             -- open-role count from the last probe (NULL = unknown)
+    region              TEXT,                -- discovery scoping hint (e.g. 'Colorado') — NOT a hard filter
+    discovery_source    TEXT                 -- how it entered the DB: simplify|usajobs|builtin|seed|manual
 );
 
 CREATE TABLE IF NOT EXISTS jobs (

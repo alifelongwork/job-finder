@@ -1,0 +1,483 @@
+{
+  "region": "Colorado",
+  "sector": "General SWE / ML",
+  "last_refreshed": "2026-06-25",
+  "source": "seeded from unified jobs.db (144-company baseline)",
+  "companies": [
+    {
+      "name": "Affirm",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "affirm",
+      "careers_url": "https://job-boards.greenhouse.io/affirm"
+    },
+    {
+      "name": "Amazon",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.amazon.jobs/en/locations/colorado"
+    },
+    {
+      "name": "Anyscale",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "anyscale",
+      "careers_url": "https://jobs.ashbyhq.com/anyscale"
+    },
+    {
+      "name": "Arrow Electronics",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "arrow/AC",
+      "careers_url": "https://arrow.wd1.myworkdayjobs.com/AC"
+    },
+    {
+      "name": "Automox",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "automox",
+      "careers_url": "https://job-boards.greenhouse.io/automox"
+    },
+    {
+      "name": "Blissway",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "blissway",
+      "careers_url": "https://www.blissway.com/careers"
+    },
+    {
+      "name": "Broadcom (VMware)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "broadcom/External_Career",
+      "careers_url": "https://broadcom.wd1.myworkdayjobs.com/External_Career"
+    },
+    {
+      "name": "Capital Rx (Judi Health)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "capitalrx",
+      "careers_url": "https://job-boards.greenhouse.io/capitalrx"
+    },
+    {
+      "name": "Charter Communications (Spectrum)",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://jobs.spectrum.com/"
+    },
+    {
+      "name": "Checkr",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "checkr",
+      "careers_url": "https://checkr.com/careers"
+    },
+    {
+      "name": "Cloudflare",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "cloudflare",
+      "careers_url": "https://www.cloudflare.com/careers/early-talent/"
+    },
+    {
+      "name": "Coalfire",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "coalfire",
+      "careers_url": "https://jobs.lever.co/coalfire"
+    },
+    {
+      "name": "Comcast",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://jobs.comcast.com/"
+    },
+    {
+      "name": "Compa",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "compa",
+      "careers_url": "https://www.compa.com/careers"
+    },
+    {
+      "name": "Cribl",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "cribl",
+      "careers_url": "https://job-boards.greenhouse.io/cribl"
+    },
+    {
+      "name": "CrowdStrike",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "crowdstrike/crowdstrikecareers",
+      "careers_url": "https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers"
+    },
+    {
+      "name": "Datadog",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "datadog",
+      "careers_url": "https://boards.greenhouse.io/datadog"
+    },
+    {
+      "name": "deepwatch",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.deepwatch.com/careers/"
+    },
+    {
+      "name": "DigitalOcean",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "digitalocean",
+      "careers_url": "https://www.digitalocean.com/careers"
+    },
+    {
+      "name": "DispatchHealth",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.dispatchhealth.com/careers/"
+    },
+    {
+      "name": "EchoStar (DISH)",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://careers.dish.com/"
+    },
+    {
+      "name": "Evolve",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "evolvevacationrental",
+      "careers_url": "https://evolve.com/careers"
+    },
+    {
+      "name": "Exabeam (LogRhythm)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "exabeam",
+      "careers_url": "https://boards.greenhouse.io/exabeam"
+    },
+    {
+      "name": "FareHarbor",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "fareharbor",
+      "careers_url": "https://fareharbor.com/careers/"
+    },
+    {
+      "name": "Flashpoint",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "flashpoint.io",
+      "careers_url": "https://jobs.ashbyhq.com/flashpoint.io"
+    },
+    {
+      "name": "Fuze Health",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "fuzehealth",
+      "careers_url": "https://job-boards.eu.greenhouse.io/fuzehealth"
+    },
+    {
+      "name": "GitLab",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "gitlab",
+      "careers_url": "https://about.gitlab.com/jobs/all-jobs/"
+    },
+    {
+      "name": "Google",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.google.com/about/careers/applications/jobs/results?location=Colorado"
+    },
+    {
+      "name": "Granicus",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workable",
+      "hint_slug": "granicus",
+      "careers_url": "https://apply.workable.com/granicus"
+    },
+    {
+      "name": "Guild",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "guildeducation",
+      "careers_url": "https://guild.com/careers"
+    },
+    {
+      "name": "Gusto",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "gusto",
+      "careers_url": "https://gusto.com/about/careers"
+    },
+    {
+      "name": "HPE (Hewlett Packard Enterprise)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "hpe/Jobsathpe",
+      "careers_url": "https://hpe.wd5.myworkdayjobs.com/Jobsathpe"
+    },
+    {
+      "name": "Hugging Face",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workable",
+      "hint_slug": "huggingface",
+      "careers_url": "https://apply.workable.com/huggingface/"
+    },
+    {
+      "name": "Ibotta",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "ibotta",
+      "careers_url": "https://ibotta.com/work-with-us/careers"
+    },
+    {
+      "name": "JumpCloud",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "jumpcloud",
+      "careers_url": "https://jobs.lever.co/jumpcloud"
+    },
+    {
+      "name": "Klaviyo",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "klaviyo",
+      "careers_url": "https://boards.greenhouse.io/klaviyo"
+    },
+    {
+      "name": "L3Harris",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://careers.l3harris.com/en/location/colorado-jobs/4832/6252001-5417618/3"
+    },
+    {
+      "name": "Medpace",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://careers.medpace.com/jobs"
+    },
+    {
+      "name": "Medtronic",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "medtronic/MedtronicCareers",
+      "careers_url": "https://medtronic.wd1.myworkdayjobs.com/MedtronicCareers"
+    },
+    {
+      "name": "Microsoft",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://careers.microsoft.com/"
+    },
+    {
+      "name": "NetApp",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://careers.netapp.com/"
+    },
+    {
+      "name": "Optiv",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.optiv.com/careers"
+    },
+    {
+      "name": "Oracle",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.oracle.com/careers/"
+    },
+    {
+      "name": "Palantir Technologies",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "palantir",
+      "careers_url": "https://jobs.lever.co/palantir"
+    },
+    {
+      "name": "Pax8",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "careers_url": "https://www.pax8.com/en-us/careers/"
+    },
+    {
+      "name": "Perpay",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "perpay",
+      "careers_url": "https://job-boards.greenhouse.io/perpay"
+    },
+    {
+      "name": "Pie Insurance",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "pieinsurance",
+      "careers_url": "https://pieinsurance.com/careers"
+    },
+    {
+      "name": "Ping Identity",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "pingidentity",
+      "careers_url": "https://www.pingidentity.com/en/company/careers.html"
+    },
+    {
+      "name": "Quantum Metric",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "quantummetric",
+      "careers_url": "https://www.quantummetric.com/careers"
+    },
+    {
+      "name": "Recurly",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "bamboohr",
+      "hint_slug": "recurly",
+      "careers_url": "https://recurly.com/company/"
+    },
+    {
+      "name": "Red Canary (Zscaler)",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "zscalerredcanary",
+      "careers_url": "https://job-boards.greenhouse.io/zscalerredcanary"
+    },
+    {
+      "name": "Scale AI",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "scaleai",
+      "careers_url": "https://job-boards.greenhouse.io/scaleai"
+    },
+    {
+      "name": "Snyk",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "snyk",
+      "careers_url": "https://job-boards.greenhouse.io/snyk"
+    },
+    {
+      "name": "SonderMind",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "sondermind",
+      "careers_url": "https://www.sondermind.com/careers/"
+    },
+    {
+      "name": "Strava",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "strava",
+      "careers_url": "https://jobs.ashbyhq.com/strava"
+    },
+    {
+      "name": "Strive Health",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "strivehealth",
+      "careers_url": "https://strivehealth.com/careers/"
+    },
+    {
+      "name": "Swimlane",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "rippling",
+      "hint_slug": "swimlane",
+      "careers_url": "https://ats.rippling.com/swimlane/jobs"
+    },
+    {
+      "name": "Sysdig",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "sysdig",
+      "careers_url": "https://jobs.lever.co/sysdig"
+    },
+    {
+      "name": "Temporal Technologies",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "temporaltechnologies",
+      "careers_url": "https://job-boards.greenhouse.io/temporaltechnologies"
+    },
+    {
+      "name": "Torc Robotics",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "torcrobotics",
+      "careers_url": "https://job-boards.greenhouse.io/torcrobotics"
+    },
+    {
+      "name": "Trimble",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "trimble/TrimbleCareers",
+      "careers_url": "https://trimble.wd1.myworkdayjobs.com/TrimbleCareers"
+    },
+    {
+      "name": "Twilio",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "twilio",
+      "careers_url": "https://www.twilio.com/en-us/company/jobs"
+    },
+    {
+      "name": "Underdog Fantasy",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "underdogfantasy",
+      "careers_url": "https://underdogfantasy.com/careers"
+    },
+    {
+      "name": "Uplight",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "jobvite",
+      "hint_slug": "uplight",
+      "careers_url": "https://jobs.jobvite.com/uplight"
+    },
+    {
+      "name": "Vendavo",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "lever",
+      "hint_slug": "vendavo",
+      "careers_url": "https://www.vendavo.com/careers/"
+    },
+    {
+      "name": "Vercel",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "greenhouse",
+      "hint_slug": "vercel",
+      "careers_url": "https://vercel.com/careers"
+    },
+    {
+      "name": "Visa",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "smartrecruiters",
+      "hint_slug": "visa",
+      "careers_url": "https://corporate.visa.com/en/jobs/"
+    },
+    {
+      "name": "Weights & Biases",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://wandb.ai/site/careers"
+    },
+    {
+      "name": "Workday",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "workday",
+      "hint_slug": "workday/workday",
+      "careers_url": "https://workday.wd5.myworkdayjobs.com/workday"
+    },
+    {
+      "name": "Workiva",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://www.workiva.com/careers"
+    },
+    {
+      "name": "Xairos Systems",
+      "source": "db-baseline-2026-06-25"
+    },
+    {
+      "name": "Zapier",
+      "source": "db-baseline-2026-06-25",
+      "hint_platform": "ashby",
+      "hint_slug": "zapier",
+      "careers_url": "https://zapier.com/jobs"
+    },
+    {
+      "name": "Zayo",
+      "source": "db-baseline-2026-06-25",
+      "careers_url": "https://zayo.com/careers/"
+    }
+  ]
+}
